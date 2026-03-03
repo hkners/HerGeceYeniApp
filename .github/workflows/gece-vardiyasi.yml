@@ -12,7 +12,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - name: Kodları Al
+      - name: Kodlari Al
         uses: actions/checkout@v4
 
       - name: Node.js Kur
@@ -20,16 +20,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Kütüphaneleri Yükle
+      - name: SDK'yi Yukle
         run: npm install @google/generative-ai
 
-      - name: Gemini'den Fikir Üret
+      - name: Gemini'den Fikir Uret
         id: uret
         run: |
-          node fikir-motoru.js > fikir_sonuc.txt
-          echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          cat fikir_sonuc.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          node fikir-motoru.js > fikir.txt
+          # EOF hatasını önlemek için tek blokta yazıyoruz
+          echo "APP_FIKRI<<GECENIN_FIKRI" >> $GITHUB_ENV
+          cat fikir.txt >> $GITHUB_ENV
+          echo "GECENIN_FIKRI" >> $GITHUB_ENV
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -39,7 +40,7 @@ jobs:
           FIKIR: ${{ env.APP_FIKRI }}
         run: |
           if [ -z "$FIKIR" ]; then
-            echo "Hata: Fikir uretilemedi!"
+            echo "Hata: Fikir bos!"
             exit 1
           fi
           gh issue create --title "🚀 Gecenin Uygulamasi" --body "$FIKIR" --label "jules"
