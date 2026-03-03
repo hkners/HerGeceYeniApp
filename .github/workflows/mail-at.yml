@@ -13,9 +13,9 @@ jobs:
         with:
           server_address: smtp.gmail.com
           server_port: 465
-          username: hakanersoy880@gmail.com
+          username: solarbot100@gmail.com # Maili GÖNDEREN hesap (Jules'un motoru)
           password: ${{ secrets.EMAIL_SIFRE }}
           subject: "🚀 Günaydın! Jules Gece Vardiyasını Bitirdi!"
-          body: "Patron, gece 12'de verdiğin görev bitti. Yeni uygulamanı React Native ve Expo ile 'clean' estetiğine uygun şekilde kodladım ve GitHub'a yükledim. PR sekmesinden kodları inceleyebilirsin! - Otonom Ajanın Jules"
-          to: hakanersoy880@gmail.com
-          from: Jules Otonom Sistem
+          body: "Patron, gece 12'de verdiğin görev bitti. Yeni uygulamanı React Native ve Expo ile kodladım ve GitHub'a yükledim. PR sekmesinden kodları inceleyebilirsin! - Otonom Ajanın Jules"
+          to: hakanersoy880@gmail.com # Mailin GİDECEĞİ hesap (Senin adresin)
+          from: Jules Otonom Sistem <solarbot100@gmail.com>
