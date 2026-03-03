@@ -2,8 +2,8 @@ name: Gece Vardiyasi (Jules'u Uyandir)
 
 on:
   schedule:
-    - cron: '0 21 * * *' # Türkiye saati ile tam gece 00:00
-  workflow_dispatch: # Manuel çalıştırma butonu
+    - cron: '0 21 * * *' # Türkiye saati ile 00:00
+  workflow_dispatch:
 
 jobs:
   fikir_bul_ve_julesa_ver:
@@ -12,7 +12,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - name: Kodları Al
+      - name: Kodlari Al
         uses: actions/checkout@v4
 
       - name: Node.js Kur
@@ -20,27 +20,23 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Gemini'den Fikir Üret
+      - name: Gemini'den Fikir Uret
         id: uret
         run: |
-          # Fikri bir dosyaya yazarak yakalıyoruz
-          node fikir-motoru.js > fikir_sonuc.txt
-          # Dosya içeriğini GitHub ortamına aktarıyoruz
+          node fikir-motoru.js > fikir_cikti.txt
           echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          cat fikir_sonuc.txt >> $GITHUB_ENV
+          cat fikir_cikti.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Jules İçin Görev (Issue) Aç
+      - name: Jules Icin Gorev (Issue) Ac
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIKIR: ${{ env.APP_FIKRI }}
         run: |
-          # Fikir boş gelirse sistemi durdurur
           if [ -z "$FIKIR" ]; then
-            echo "Hata: Gemini'den fikir alınamadı!"
+            echo "Hata: Fikir uretilemedi!"
             exit 1
           fi
-          # Doğru etiketle görevi oluşturur
-          gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
+          gh issue create --title "🚀 Gecenin Uygulamasi" --body "$FIKIR" --label "jules"
