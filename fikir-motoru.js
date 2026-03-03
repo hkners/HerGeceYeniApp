@@ -13,9 +13,10 @@ const options = {
 };
 
 fetch(url, options)
-  .then(res => res.json())
-  .then(data => {
+.then(data => {
     const fikir = data.candidates[0].content.parts[0].text;
-process.stdout.write(fikir.trim()); // console.log yerine bunu kullanmak daha garantidir
+    // Çıktıyı doğrudan standart çıktıya (stdout) temiz bir şekilde yazıyoruz
+    process.stdout.write(fikir.trim());
+  })
   })
   .catch(err => console.error(err));
