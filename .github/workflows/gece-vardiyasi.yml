@@ -3,7 +3,7 @@ name: Gece Vardiyasi (Jules'u Uyandir)
 on:
   schedule:
     - cron: '0 21 * * *' # Türkiye saati ile tam gece 00:00
-  workflow_dispatch: # Manuel çalıştırma butonu için eklediğimiz sihirli satır
+  workflow_dispatch: # Manuel çalıştırma butonu
 
 jobs:
   fikir_bul_ve_julesa_ver:
@@ -15,29 +15,7 @@ jobs:
       - name: Kodları Al
         uses: actions/checkout@v4
 
-      - name: Gemini'den Fikir Üret
-        id: uret
-        run: |
-          # Fikri bir dosyaya yaz
-          node fikir-motoru.js > fikir_sonuc.txt
-          # Dosya içeriğini GitHub Environment'a güvenli bir şekilde aktar
-          echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          cat fikir_sonuc.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-      - name: Jules İçin Görev (Issue) Aç
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FIKIR: ${{ env.APP_FIKRI }}
-        run: |
-          # Boş fikir kontrolü: Eğer FIKIR boşsa hata ver ve dur
-          if [ -z "$FIKIR" ]; then
-            echo "Hata: Gemini'den fikir alınamadı!"
-            exit 1
-          fi
-          gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
+      - name: Node.js Kur
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -45,9 +23,9 @@ jobs:
       - name: Gemini'den Fikir Üret
         id: uret
         run: |
-          # Fikri bir dosyaya yaz
+          # Fikri bir dosyaya yazarak yakalıyoruz
           node fikir-motoru.js > fikir_sonuc.txt
-          # Dosya içeriğini GitHub Environment'a güvenli bir şekilde aktar
+          # Dosya içeriğini GitHub ortamına aktarıyoruz
           echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
           cat fikir_sonuc.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -59,9 +37,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIKIR: ${{ env.APP_FIKRI }}
         run: |
-          # Boş fikir kontrolü: Eğer FIKIR boşsa hata ver ve dur
+          # Fikir boş gelirse sistemi durdurur
           if [ -z "$FIKIR" ]; then
             echo "Hata: Gemini'den fikir alınamadı!"
             exit 1
           fi
+          # Doğru etiketle görevi oluşturur
           gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
