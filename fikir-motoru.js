@@ -16,6 +16,6 @@ fetch(url, options)
   .then(res => res.json())
   .then(data => {
     const fikir = data.candidates[0].content.parts[0].text;
-    console.log(fikir);
+process.stdout.write(fikir.trim()); // console.log yerine bunu kullanmak daha garantidir
   })
   .catch(err => console.error(err));
