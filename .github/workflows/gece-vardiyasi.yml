@@ -12,7 +12,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - name: Kodlari Al
+      - name: Kodları Al
         uses: actions/checkout@v4
 
       - name: Node.js Kur
@@ -20,12 +20,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Gemini'den Fikir Uret
+      - name: Kütüphaneleri Yükle
+        run: npm install @google/generative-ai
+
+      - name: Gemini'den Fikir Üret
         id: uret
         run: |
-          node fikir-motoru.js > fikir_cikti.txt
+          node fikir-motoru.js > fikir_sonuc.txt
           echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          cat fikir_cikti.txt >> $GITHUB_ENV
+          cat fikir_sonuc.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
