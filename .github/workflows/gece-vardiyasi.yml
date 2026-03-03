@@ -23,9 +23,9 @@ jobs:
       - name: Gemini'den Fikir Üret
         id: uret
         run: |
-          FIKIR_CIKTISI=$(node fikir-motoru.js)
+          node fikir-motoru.js > fikir.txt
           echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          echo "$FIKIR_CIKTISI" >> $GITHUB_ENV
+          cat fikir.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
