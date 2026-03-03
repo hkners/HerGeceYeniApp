@@ -1,0 +1,21 @@
+name: Jules İşi Bitirdi (Mail At)
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  send_email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Patron Hakan'a Mail Gönder
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: hakanersoy880@gmail.com
+          password: ${{ secrets.EMAIL_SIFRE }}
+          subject: "🚀 Günaydın! Jules Gece Vardiyasını Bitirdi!"
+          body: "Patron, gece 12'de verdiğin görev bitti. Yeni uygulamanı React Native ve Expo ile 'clean' estetiğine uygun şekilde kodladım ve GitHub'a yükledim. PR sekmesinden kodları inceleyebilirsin! - Otonom Ajanın Jules"
+          to: hakanersoy880@gmail.com
+          from: Jules Otonom Sistem
