@@ -3,6 +3,7 @@ name: Gece Vardiyasi (Jules'u Uyandir)
 on:
   schedule:
     - cron: '0 21 * * *' # Türkiye saati ile tam gece 00:00
+  workflow_dispatch: # Manuel çalıştırma butonu için eklediğimiz sihirli satır
 
 jobs:
   fikir_bul_ve_julesa_ver:
