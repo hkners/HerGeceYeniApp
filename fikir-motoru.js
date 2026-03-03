@@ -1,21 +1,27 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 async function run() {
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("Hata: GEMINI_API_KEY eksik!");
+    process.exit(1);
+  }
+
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   
-  // Önceki hatayı önlemek için: Eğer preview modeli çalışmazsa 'gemini-2.0-flash' deneyebilirsin
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+  // En güncel ve hızlı model: gemini-2.0-flash
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const prompt = `Generate a concept for a single-page React Native app (SDK 54). 
-  Design: clean, minimalist, soft pastel tones. 
-  Output: App Title and a 3-sentence description. No code.`;
+  const prompt = `You are a creative agent for ErsoyLabs. Generate a new daily app idea.
+  Aesthetic: "clean girl", minimalist, airy, soft peach and blush pink colors.
+  Output: A title and a 3-sentence description of the main feature.
+  No code, no markdown, just plain text.`;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     process.stdout.write(response.text().trim());
   } catch (error) {
-    console.error("Fikir üretilirken hata oluştu:", error.message);
+    console.error("Üretim hatası:", error.message);
     process.exit(1);
   }
 }
