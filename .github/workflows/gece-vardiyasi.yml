@@ -15,7 +15,7 @@ jobs:
       - name: Kodları Al
         uses: actions/checkout@v4
 
-      - name: Node.js Kur- name: Gemini'den Fikir Üret
+      - name: Gemini'den Fikir Üret
         id: uret
         run: |
           # Fikri bir dosyaya yaz
