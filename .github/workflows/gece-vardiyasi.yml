@@ -35,4 +35,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIKIR: ${{ env.APP_FIKRI }}
         run: |
-          gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules-do-this"
+          gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
