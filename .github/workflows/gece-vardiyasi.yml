@@ -15,17 +15,14 @@ jobs:
       - name: Kodları Al
         uses: actions/checkout@v4
 
-      - name: Node.js Kur
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Gemini'den Fikir Üret
+      - name: Node.js Kur- name: Gemini'den Fikir Üret
         id: uret
         run: |
-          node fikir-motoru.js > fikir.txt
+          # Fikri bir dosyaya yaz
+          node fikir-motoru.js > fikir_sonuc.txt
+          # Dosya içeriğini GitHub Environment'a güvenli bir şekilde aktar
           echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
-          cat fikir.txt >> $GITHUB_ENV
+          cat fikir_sonuc.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -35,4 +32,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIKIR: ${{ env.APP_FIKRI }}
         run: |
+          # Boş fikir kontrolü: Eğer FIKIR boşsa hata ver ve dur
+          if [ -z "$FIKIR" ]; then
+            echo "Hata: Gemini'den fikir alınamadı!"
+            exit 1
+          fi
+          gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Gemini'den Fikir Üret
+        id: uret
+        run: |
+          # Fikri bir dosyaya yaz
+          node fikir-motoru.js > fikir_sonuc.txt
+          # Dosya içeriğini GitHub Environment'a güvenli bir şekilde aktar
+          echo "APP_FIKRI<<EOF" >> $GITHUB_ENV
+          cat fikir_sonuc.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Jules İçin Görev (Issue) Aç
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FIKIR: ${{ env.APP_FIKRI }}
+        run: |
+          # Boş fikir kontrolü: Eğer FIKIR boşsa hata ver ve dur
+          if [ -z "$FIKIR" ]; then
+            echo "Hata: Gemini'den fikir alınamadı!"
+            exit 1
+          fi
           gh issue create --title "🚀 Gecenin Uygulaması" --body "$FIKIR" --label "jules"
