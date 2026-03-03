@@ -1,44 +1,23 @@
-const apiKey = process.env.GEMINI_API_KEY;
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// API Anahtarı kontrolü
-if (!apiKey) {
-  console.error("HATA: GEMINI_API_KEY bulunamadı. GitHub Secrets kısmını kontrol et.");
-  process.exit(1);
+async function run() {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  
+  // Önceki hatayı önlemek için: Eğer preview modeli çalışmazsa 'gemini-2.0-flash' deneyebilirsin
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+
+  const prompt = `Generate a concept for a single-page React Native app (SDK 54). 
+  Design: clean, minimalist, soft pastel tones. 
+  Output: App Title and a 3-sentence description. No code.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    process.stdout.write(response.text().trim());
+  } catch (error) {
+    console.error("Fikir üretilirken hata oluştu:", error.message);
+    process.exit(1);
+  }
 }
 
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`;
-
-const prompt = `You are a creative app ideation engine for ErsoyLabs. Generate a consumer app idea using React Native (SDK 54).
-The aesthetic must be "clean": minimalist, airy, with soft highlights.
-Output ONLY the App Title followed by a brief 3-sentence description of the main feature. Do not include any code, intro text, or markdown formatting.`;
-
-const options = {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }]
-  })
-};
-
-fetch(url, options)
-  .then(async (res) => {
-    const data = await res.json();
-    
-    // API Hatası kontrolü
-    if (data.error) {
-      console.error("API Hatası Detayı:", JSON.stringify(data.error, null, 2));
-      process.exit(1);
-    }
-
-    if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-      const result = data.candidates[0].content.parts[0].text;
-      process.stdout.write(result.trim());
-    } else {
-      console.error("API'den beklenen veri gelmedi. Yanıt:", JSON.stringify(data, null, 2));
-      process.exit(1);
-    }
-  })
-  .catch(err => {
-    console.error("Bağlantı/Fetch Hatası:", err);
-    process.exit(1);
-  });
+run();
