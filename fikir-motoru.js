@@ -9,7 +9,7 @@ async function run() {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   
   // En güncel ve hızlı model: gemini-2.0-flash
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
   const prompt = `You are a creative agent for ErsoyLabs. Generate a new daily app idea.
   Aesthetic: "clean", minimalist, airy, soft colors.
