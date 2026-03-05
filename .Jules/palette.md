@@ -1,0 +1,3 @@
+## 2024-05-24 - Interactive Component Accessibility
+**Learning:** React Native custom interactive components (like `TouchableOpacity` acting as checkboxes/list items) often lack critical native accessibility features by default.
+**Action:** Always add `accessibilityRole="checkbox"` (or appropriate role) and `accessibilityState={{ checked: isChecked }}` to components mimicking standard native controls. Use `accessibilityLabel` or `accessibilityHint` to provide clear context for screen reader users.
