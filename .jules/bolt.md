@@ -1,0 +1,3 @@
+## 2024-05-15 - Unnecessary Re-renders in React Native Lists
+**Learning:** In React Native, mapping over an array of items without memoization causes all components in the list to re-render when a single item's state changes. This is exacerbated when child components have their own animations (like `Animated.loop`), as React will re-evaluate them unnecessarily. Furthermore, `Animated.loop` without a cleanup function in `useEffect` leaves background processes running.
+**Action:** Always use `React.memo` for list items and `useCallback` for their event handlers when list items contain expensive computations or animations. Ensure `useEffect` returns a cleanup function to stop animations when components unmount or dependencies change.
