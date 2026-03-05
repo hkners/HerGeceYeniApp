@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 
 const INITIAL_INTENTIONS = [
@@ -9,12 +9,14 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
+// ⚡ Bolt: Wrap BreathingContainer in React.memo to prevent O(N) re-renders when a single item toggles
+const BreathingContainer = memo(({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    let animation;
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
+      animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -27,10 +29,18 @@ const BreathingContainer = ({ intention, onToggle }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
     } else {
       pulseAnim.setValue(1);
     }
+
+    // ⚡ Bolt: Add cleanup to prevent memory leaks from abandoned animations
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
   }, [intention.priority, intention.completed, pulseAnim]);
 
   const getContainerStyle = () => {
@@ -44,11 +54,16 @@ const BreathingContainer = ({ intention, onToggle }) => {
     return '#4A4A4A';
   };
 
+  // ⚡ Bolt: Inline function removed, callback reference is stable
+  const handlePress = useCallback(() => {
+    onToggle(intention.id);
+  }, [intention.id, onToggle]);
+
   return (
     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
+        onPress={handlePress}
         style={[styles.intentionContainer, getContainerStyle()]}
       >
         <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
@@ -57,18 +72,19 @@ const BreathingContainer = ({ intention, onToggle }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // ⚡ Bolt: Wrap in useCallback to maintain a stable reference and enable memoization of child components
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
