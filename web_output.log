@@ -1,0 +1,13 @@
+
+> hergeceyeniapp@1.0.0 web /app
+> expo start --web
+
+Starting project at /app
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.2% (136/182)
+Web Bundled 6720ms index.js (302 modules)
+ LOG  [web] Logs will appear in the browser console
