@@ -1,0 +1,93 @@
+This concept focuses on **"Aura: The Intentional Life Manager."**
+
+Unlike traditional productivity apps that feel like digital "to-do" lists, Aura is designed to be a "breath of fresh air" for the user. It combines low-friction task management with cognitive wellness.
+
+---
+
+### 1. The Design Language: "Luminous Minimalism"
+
+The aesthetic is built on the principle of **negative space as a feature**. It should feel less like a tool and more like a calm morning.
+
+*   **Color Palette:**
+    *   **Base:** `#FAFAFA` (Off-white/Eggshell) for the background.
+    *   **Surface:** `#FFFFFF` (Pure White) for cards, using a slight elevation or subtle border.
+    *   **Highlights:** Soft, ethereal gradients:
+        *   *Morning Glow:* `#E0F2F1` (Mint) to `#F1F8E9` (Soft Lime).
+        *   *Focus State:* `#E3F2FD` (Soft Sky) with a 40% opacity blur.
+    *   **Typography:** `#2D3436` (Deep Charcoal, never pure black) for readability.
+*   **Typography:**
+    *   Primary: *Inter* or *SF Pro Display*.
+    *   Weights: Use `300` (Light) for secondary info and `500` (Medium) for headers. Avoid `Bold` to maintain the "airy" feel.
+    *   Tracking: Increase letter spacing by `0.5px` for a premium, spacious look.
+*   **UI Elements:**
+    *   **Glassmorphism:** Use `expo-blur` for headers and navigation bars to allow background colors to bleed through softly.
+    *   **Radius:** Large corner radii (`32px` for main cards, `16px` for buttons).
+    *   **Shadows:** Extremely diffused. `shadowOpacity: 0.05`, `shadowRadius: 15`. No harsh outlines.
+
+---
+
+### 2. Core Features
+
+#### A. The "Pulse" Dashboard
+Instead of a list, the home screen features a central, breathing orb (The Pulse).
+*   **The Mechanic:** The orb’s color shifts based on your current workload or mood.
+*   **The Interaction:** Tapping the Pulse starts a "Flow Session" (A focus timer that doesn't count down numbers, but slowly fills the screen with a soft highlight color).
+
+#### B. "Whisper" Notifications
+Aura doesn't "ping." It uses "Whisper" notifications—gentle haptic patterns and silent screen-edge glows—to remind you of tasks without triggering anxiety.
+
+#### C. Fluid Task Entry
+*   **Natural Language Processing (NLP):** Users type one continuous string: *"Yoga at 6pm daily"* and the app parses it into a clean, minimalist card.
+*   **Gestures:** Swipe right to "Shelve" (save for later), swipe left to "Dissolve" (complete with a fading animation).
+
+#### D. Space Intervals (Focus Mode)
+Built-in Pomodoro reimagined. Instead of a ticking clock, the app plays "brown noise" or "ambient rain" and the UI becomes even more minimal—removing all icons and leaving only one word: the current task.
+
+---
+
+### 3. Technical Specifications (React Native SDK 54)
+
+Using the latest features of **React Native SDK 54**, the app will leverage improved architecture and performance.
+
+*   **Engine:** New Architecture (TurboModules & Fabric) enabled by default for buttery-smooth 120fps animations.
+*   **Navigation:** `expo-router` v4 (File-based routing) for deep linking and seamless state management.
+*   **Animations:** `react-native-reanimated` v3.x.
+    *   *Implementation:* Use Layout Transitions for "Task Dissolve" effects.
+    *   *Sensor API:* Use the Accelerometer to slightly shift the "Soft Highlights" as the user tilts the phone (Parallax Depth).
+*   **State Management:** `Zustand` for a lightweight, "clean" code footprint.
+*   **Glassmorphism Tech:** `expo-blur` for the navigation bar and `react-native-skia` for the "Pulse" orb's organic, morphing shape.
+*   **Icons:** `Lucide-react-native` (Thin stroke weight: `1.25px`).
+
+---
+
+### 4. Detailed App Prompt (For Developer/AI)
+
+> **"Aura" App Specification:**
+>
+> **Objective:** Build a React Native (SDK 54) wellness-productivity app. The primary goal is to reduce 'UI clutter' and mental load.
+>
+> **Screen 1: The Void (Home)**
+> - A centered 'Pulse' component (Skia-based) that slowly oscillates in scale (1.0 to 1.05).
+> - Underneath, a 'Current Intent' text display.
+> - A bottom-docked, translucent navigation bar with three icons: [Flow, Tasks, Reflection].
+>
+> **Screen 2: Tasks (Airy List)**
+> - Tasks are rendered as pure white cards on a `#FAFAFA` background.
+> - No checkboxes. Instead, use a 'soft-press' gesture to mark as complete.
+> - On completion, the card should trigger a `Reanimated` layout transition where the card opacity goes to 0 while its Y-position drifts upward by 20px.
+>
+> **Visual Styles (React Native Stylesheet):**
+> - `container: { flex: 1, backgroundColor: '#FAFAFA', padding: 24 }`
+> - `card: { backgroundColor: '#FFF', borderRadius: 32, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.04, shadowRadius: 20 }`
+> - `highlight: { position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: '#E0F2F1', filter: 'blur(60px)', opacity: 0.5 }`
+>
+> **Features to Implement:**
+> 1. Integration of `expo-haptics` for every interaction (ImpactLight).
+> 2. Use `Canvas` from `@shopify/react-native-skia` for the background gradient highlights.
+> 3. Implement a 'Focus Mode' where the `StatusBar` is hidden and all UI elements except the active task fade to 10% opacity.
+> 4. Minimalist 'Quick Add' button that sits in the bottom right, utilizing a `Floating Action Button` that expands into a glassmorphism text input.
+
+---
+
+### 5. Unique User Experience (UX) Detail: The "Morning Mist"
+When the user first opens the app in the morning, the entire UI is covered in a soft "blur" overlay. The user must gently "swipe away" the mist (using a masked-view gesture) to reveal their day. This ritualistic interaction reinforces the "Intentional" nature of the app.

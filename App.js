@@ -1,164 +1,372 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  withSpring,
+  FadeIn,
+  FadeOutUp,
+  Layout
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { Canvas, Rect, SweepGradient, vec, Circle, BlurMask } from '@shopify/react-native-skia';
+import { BlurView } from 'expo-blur';
+import { CheckCircle2, Circle as CircleIcon, LayoutDashboard, Zap, BookOpen } from 'lucide-react-native';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
+const { width, height } = Dimensions.get('window');
+
+const INITIAL_TASKS = [
+  { id: '1', text: 'Morning Yoga at 6am', completed: false },
+  { id: '2', text: 'Drink 2L of water', completed: false },
+  { id: '3', text: 'Read 10 pages of a book', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const TaskItem = ({ task, onComplete }) => {
+  const scale = useSharedValue(1);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
-
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+    onComplete(task.id);
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
+  }));
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOutUp.duration(400).delay(100)}
+      layout={Layout.springify()}
+    >
       <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        activeOpacity={1}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`Complete task: ${task.text}`}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
+        <Animated.View style={[styles.taskCard, animatedStyle]}>
+          <Text style={styles.taskText}>{task.text}</Text>
+          <CircleIcon color="#FFC0CB" size={24} strokeWidth={1.25} />
+        </Animated.View>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [focusMode, setFocusMode] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTaskText, setNewTaskText] = useState('');
 
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
+  // Pulse animation
+  const pulseScale = useSharedValue(1);
+
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 3000 }),
+        withTiming(1, { duration: 3000 })
+      ),
+      -1,
+      true
     );
+  }, []);
+
+  const pulseAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }]
+  }));
+
+  const mainUiOpacity = useAnimatedStyle(() => ({
+    opacity: withTiming(focusMode ? 0.1 : 1, { duration: 500 })
+  }));
+
+  const completeTask = (id) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const addTask = () => {
+    if (newTaskText.trim()) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setTasks([...tasks, { id: Date.now().toString(), text: newTaskText, completed: false }]);
+      setNewTaskText('');
+      setIsAdding(false);
+    }
+  };
+
+  const toggleFocusMode = () => {
+    if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setFocusMode(!focusMode);
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      {/* Background Skia Canvas */}
+      <View style={StyleSheet.absoluteFill}>
+        <Canvas style={{ flex: 1 }}>
+           <Circle c={vec(0, 0)} r={300} color="#FFDAB9" opacity={0.15}>
+             <BlurMask blur={50} style="normal" />
+           </Circle>
+           <Circle c={vec(width, height / 2)} r={250} color="#FFC0CB" opacity={0.1}>
+             <BlurMask blur={50} style="normal" />
+           </Circle>
+        </Canvas>
+      </View>
+
+      <Animated.View style={[styles.content, mainUiOpacity]}>
+        {/* Header / Pulse */}
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={toggleFocusMode}
+            style={styles.pulseWrapper}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle Focus Mode"
+          >
+            <Animated.View style={[styles.pulseOrb, pulseAnimatedStyle]}>
+              <Canvas style={{ flex: 1 }}>
+                <Circle c={vec(50, 50)} r={50} color="#FFDAB9" opacity={0.5}>
+                    <BlurMask blur={10} style="normal" />
+                </Circle>
+              </Canvas>
+            </Animated.View>
+            <Text style={styles.pulseText}>{focusMode ? "Focusing" : "Aura"}</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
-            />
+        {/* Task List */}
+        <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
+          {tasks.map(task => (
+            <TaskItem key={task.id} task={task} onComplete={completeTask} />
           ))}
-        </View>
+          {tasks.length === 0 && (
+            <Text style={styles.emptyText}>Breathe. You have no tasks left.</Text>
+          )}
+        </ScrollView>
+      </Animated.View>
 
-      </ScrollView>
+      {/* FAB & Input */}
+      {!focusMode && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.fabContainer}
+          pointerEvents="box-none"
+        >
+          {isAdding ? (
+            <Animated.View entering={FadeIn} style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="What is your intent?"
+                placeholderTextColor="#A0A0A0"
+                value={newTaskText}
+                onChangeText={setNewTaskText}
+                onSubmitEditing={addTask}
+                autoFocus
+                returnKeyType="done"
+              />
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAdding(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          ) : (
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={() => {
+                if(Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsAdding(true);
+              }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Add Task"
+            >
+              <Text style={styles.fabText}>+</Text>
+            </TouchableOpacity>
+          )}
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Bottom Nav */}
+      <Animated.View style={[styles.bottomNavWrapper, mainUiOpacity]}>
+        <BlurView intensity={50} tint="light" style={styles.bottomNav}>
+          <TouchableOpacity style={styles.navItem}>
+             <LayoutDashboard color="#2D3436" size={24} strokeWidth={1.25} />
+            <Text style={[styles.navText, styles.navTextActive]}>Tasks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem} onPress={toggleFocusMode}>
+            <Zap color="#A0A0A0" size={24} strokeWidth={1.25} />
+            <Text style={styles.navText}>Flow</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <BookOpen color="#A0A0A0" size={24} strokeWidth={1.25} />
+            <Text style={styles.navText}>Reflection</Text>
+          </TouchableOpacity>
+        </BlurView>
+      </Animated.View>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+  content: {
+    flex: 1,
   },
   header: {
-    marginBottom: 40,
     alignItems: 'center',
+    paddingVertical: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#888888',
-    letterSpacing: 0.5,
-  },
-  listContainer: {
-    gap: 20,
-  },
-  intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+  pulseWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: 120,
+    height: 120,
   },
-  containerNormal: {
+  pulseOrb: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+  },
+  pulseText: {
+    fontSize: 20,
+    fontWeight: '300',
+    color: '#2D3436',
+    letterSpacing: 1,
+  },
+  listContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 100,
+  },
+  taskCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#2D3436',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
-  },
-  intentionText: {
+  taskText: {
     fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    color: '#2D3436',
+    fontWeight: '400',
+    flex: 1,
   },
+  emptyText: {
+    textAlign: 'center',
+    color: '#A0A0A0',
+    marginTop: 40,
+    fontSize: 16,
+    fontWeight: '300',
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 120,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    alignItems: 'flex-end',
+  },
+  fab: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2D3436',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  fabText: {
+    fontSize: 28,
+    color: '#2D3436',
+    fontWeight: '300',
+    lineHeight: 32,
+  },
+  inputContainer: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#2D3436',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#2D3436',
+    padding: 8,
+  },
+  cancelButton: {
+    padding: 8,
+  },
+  cancelText: {
+    color: '#FFC0CB', // Blush pink
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  bottomNavWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  navItem: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  navText: {
+    fontSize: 12,
+    color: '#A0A0A0',
+    fontWeight: '400',
+    marginTop: 4,
+  },
+  navTextActive: {
+    color: '#2D3436',
+    fontWeight: '600',
+  }
 });
