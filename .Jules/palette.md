@@ -1,0 +1,3 @@
+## 2024-05-14 - Custom Interactive Elements Need Explicit Accessibility
+**Learning:** In React Native, custom interactive elements (like `TouchableOpacity` mimicking a checkbox) do not automatically convey their role and state to screen readers.
+**Action:** Always explicitly declare native accessibility features by including `accessibilityRole`, `accessibilityState`, `accessibilityLabel`, and `accessibilityHint` for custom interactive components.
