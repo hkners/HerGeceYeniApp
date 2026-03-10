@@ -1,0 +1,3 @@
+## 2024-05-24 - React Native Animated.loop Memory Leaks
+**Learning:** In React Native, `Animated.loop` does not automatically stop or clean itself up when the component unmounts or when dependency arrays in `useEffect` change. This can lead to memory leaks and unnecessary background thread activity. Also, mapping list components without `React.memo` causes O(n) re-rendering.
+**Action:** Always capture the reference returned by `Animated.loop` and explicitly call `.stop()` in the `useEffect` cleanup function. Additionally, wrap custom row components in `React.memo` and pass stable callback props using `useCallback` to prevent unnecessary re-renders.
