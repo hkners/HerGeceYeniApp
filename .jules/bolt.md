@@ -1,0 +1,3 @@
+## 2024-03-24 - Fix Animated.loop Memory Leak
+**Learning:** In React Native's Reanimated or standard `Animated` library, continuous animations like `Animated.loop` must be explicitly stopped when components unmount or re-render based on new conditions. Otherwise, they continue consuming background thread resources and CPU cycles indefinitely, causing severe memory leaks and rendering bottlenecks.
+**Action:** When using `Animated.loop` inside a `useEffect` hook, always assign the returned loop instance to a variable and explicitly call its `.stop()` method inside the `useEffect` cleanup return function.
