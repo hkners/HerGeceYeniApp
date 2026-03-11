@@ -1,164 +1,450 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  Dimensions,
+  Animated as RNAnimated,
+  Platform,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+  interpolateColor,
+  Easing,
+} from 'react-native-reanimated';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
-];
+// ----------------------------------------------------------------------
+// CONFIGURATION & THEME ("Clean Girl" Aesthetic)
+// ----------------------------------------------------------------------
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const THEME = {
+  colors: {
+    background: '#FAFAFB',       // Off-white/Alabaster
+    white: '#FFFFFF',            // Pure White
+    textPrimary: '#2D2D2D',      // Dark slate gray / Graphite
+    textSecondary: '#757575',    // Slate Grey
+    accentPeach: '#FFDAB9',      // Soft peach
+    accentPink: '#FFC0CB',       // Blush pink
+    accentSage: '#D4E2D4',       // Muted Sage
+    accentLavender: '#E2D4F0',   // Hazy Lavender
+    accentGold: '#F0E5D4',       // Pale Sunset Gold
+    borderSoft: 'rgba(0, 0, 0, 0.04)',
+    shadowSoft: 'rgba(0, 0, 0, 0.03)',
+  },
+  typography: {
+    fontFamilyPrimary: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontFamilySecondary: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  radii: {
+    squircle: 24,
+    pill: 9999,
+  },
+  shadows: {
+    soft: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.03,
+      shadowRadius: 40,
+      elevation: 2,
+    },
+    medium: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 15 },
+      shadowOpacity: 0.05,
+      shadowRadius: 30,
+      elevation: 3,
+    },
+  },
+};
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+const { width, height } = Dimensions.get('window');
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+// ----------------------------------------------------------------------
+// COMPONENTS
+// ----------------------------------------------------------------------
+
+// 1. Soft Squircle Button
+const SquircleButton = ({ title, icon, onPress, isActive }) => {
+  const scale = useSharedValue(1);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, { damping: 20, stiffness: 90 });
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 20, stiffness: 90 });
   };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor: isActive ? THEME.colors.accentPeach : THEME.colors.white,
+    };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
+    <TouchableOpacity
+      activeOpacity={1}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
+      style={styles.squircleWrapper}
+    >
+      <Animated.View style={[styles.squircleContainer, THEME.shadows.medium, animatedStyle]}>
+        <Text style={[styles.squircleIcon, { color: isActive ? THEME.colors.textPrimary : THEME.colors.textSecondary }]}>
+          {icon}
         </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        <Text style={[styles.squircleTitle, { color: isActive ? THEME.colors.textPrimary : THEME.colors.textSecondary }]}>
+          {title}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
-export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
+// 2. The Pulsating Orb (Energy Pulse)
+const EnergyPulse = ({ onLongPress, state }) => {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.7);
 
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
+  // Colors based on state
+  const colors = {
+    resting: THEME.colors.accentSage,
+    flow: THEME.colors.accentLavender,
+    drained: THEME.colors.accentPink,
+    high: THEME.colors.accentGold,
   };
+
+  useEffect(() => {
+    // Start pulsing animation
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.9, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.7, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+      backgroundColor: withTiming(colors[state] || THEME.colors.accentPeach, { duration: 500 }),
+    };
+  });
+
+  return (
+    <View style={styles.pulseWrapper}>
+      <Animated.View style={[styles.pulseOuter, THEME.shadows.soft, animatedStyle]}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onLongPress={onLongPress}
+          delayLongPress={500}
+          style={styles.pulseInnerTouchable}
+          accessibilityRole="button"
+          accessibilityLabel="Energy Pulse, long press to log state"
+        >
+          <View style={[styles.pulseInner, { backgroundColor: colors[state] }]} />
+        </TouchableOpacity>
+      </Animated.View>
+      <Text style={styles.pulseLabel}>Hold to capture energy</Text>
+    </View>
+  );
+};
+
+// 3. Focus Ring
+const FocusRing = ({ progress, task }) => {
+  // Mock ring with border
+  return (
+    <View style={styles.focusRingContainer}>
+      <View style={[styles.focusRingOuter, THEME.shadows.medium]}>
+        <View style={styles.focusRingInner}>
+          <Text style={styles.focusRingTask}>{task}</Text>
+          <Text style={styles.focusRingTime}>24:59</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ----------------------------------------------------------------------
+// MAIN APP COMPONENT
+// ----------------------------------------------------------------------
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('focus'); // focus, rest, reflect
+  const [energyState, setEnergyState] = useState('resting');
+  const [isFocusSessionActive, setIsFocusSessionActive] = useState(false);
+
+  // Handle Long Press on Orb
+  const handleOrbPress = () => {
+    const states = ['resting', 'flow', 'drained', 'high'];
+    const nextIndex = (states.indexOf(energyState) + 1) % states.length;
+    setEnergyState(states[nextIndex]);
+  };
+
+  // Views
+  const renderDashboard = () => (
+    <View style={styles.viewContainer}>
+      <View style={styles.header}>
+        <Text style={styles.headerTime}>Just past noon</Text>
+        <Text style={styles.headerState}>Current: {energyState.charAt(0).toUpperCase() + energyState.slice(1)}</Text>
+      </View>
+
+      <View style={styles.mainContent}>
+        <EnergyPulse state={energyState} onLongPress={handleOrbPress} />
+      </View>
+    </View>
+  );
+
+  const renderFocusSession = () => (
+    <View style={[styles.viewContainer, { backgroundColor: THEME.colors.accentSage + '33' }]}>
+      <View style={styles.headerCenter}>
+        <Text style={styles.headerTitle}>Deep Work</Text>
+      </View>
+
+      <View style={styles.mainContent}>
+        <FocusRing task="Write Architecture Doc" progress={0.3} />
+      </View>
+    </View>
+  );
+
+  const renderReflect = () => (
+    <View style={styles.viewContainer}>
+      <View style={styles.headerCenter}>
+        <Text style={styles.headerTitle}>Insights</Text>
+      </View>
+
+      <View style={styles.mainContent}>
+        <View style={[styles.insightCard, THEME.shadows.soft]}>
+          <Text style={styles.insightTitle}>Peak Flow</Text>
+          <Text style={styles.insightBody}>You achieved 2 hours of deep focus this morning.</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
-        </View>
+      <View style={styles.container}>
+        {/* Dynamic View Content */}
+        {activeTab === 'focus' && renderFocusSession()}
+        {activeTab === 'rest' && renderDashboard()}
+        {activeTab === 'reflect' && renderReflect()}
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
+        {/* Floating Bottom Navigation */}
+        <View style={styles.navBarWrapper}>
+          <View style={[styles.navBar, THEME.shadows.medium]}>
+            <SquircleButton
+              title="Focus"
+              icon="✧"
+              isActive={activeTab === 'focus'}
+              onPress={() => setActiveTab('focus')}
             />
-          ))}
+            <SquircleButton
+              title="Rest"
+              icon="○"
+              isActive={activeTab === 'rest'}
+              onPress={() => setActiveTab('rest')}
+            />
+            <SquircleButton
+              title="Reflect"
+              icon="≈"
+              isActive={activeTab === 'reflect'}
+              onPress={() => setActiveTab('reflect')}
+            />
+          </View>
         </View>
-
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
+// ----------------------------------------------------------------------
+// STYLES
+// ----------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: THEME.colors.background,
   },
-  scrollContainer: {
-    flexGrow: 1,
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+  viewContainer: {
+    flex: 1,
+    paddingTop: 24,
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
   },
   header: {
-    marginBottom: 40,
+    marginTop: 20,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#888888',
+  headerTime: {
+    fontSize: 16,
+    color: THEME.colors.textSecondary,
+    fontFamily: THEME.typography.fontFamilyPrimary,
     letterSpacing: 0.5,
   },
-  listContainer: {
-    gap: 20,
+  headerState: {
+    fontSize: 14,
+    color: THEME.colors.textPrimary,
+    marginTop: 8,
+    fontWeight: '500',
   },
-  intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+  headerCenter: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    color: THEME.colors.textPrimary,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Orb
+  pulseWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+  pulseOuter: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  pulseInnerTouchable: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  pulseInner: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    opacity: 0.8,
   },
-  intentionText: {
-    fontSize: 16,
-    fontWeight: '500',
+  pulseLabel: {
+    marginTop: 40,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
     letterSpacing: 0.5,
+  },
+
+  // Focus Ring
+  focusRingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focusRingOuter: {
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    borderWidth: 1,
+    borderColor: THEME.colors.accentPeach,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.white,
+  },
+  focusRingInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focusRingTask: {
+    fontSize: 20,
+    color: THEME.colors.textPrimary,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  focusRingTime: {
+    fontSize: 48,
+    fontWeight: '300',
+    color: THEME.colors.textPrimary,
+    letterSpacing: -1,
+  },
+
+  // Insight Card
+  insightCard: {
+    backgroundColor: THEME.colors.white,
+    padding: 32,
+    borderRadius: THEME.radii.squircle,
+    width: '100%',
+    alignItems: 'center',
+  },
+  insightTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.colors.textPrimary,
+    marginBottom: 12,
+  },
+  insightBody: {
+    fontSize: 16,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  // Navigation
+  navBarWrapper: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  navBar: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.white,
+    borderRadius: THEME.radii.pill,
+    padding: 8,
+    gap: 12,
+  },
+  squircleWrapper: {
+    // Wrapper for touchable
+  },
+  squircleContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: THEME.radii.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  squircleIcon: {
+    fontSize: 16,
+  },
+  squircleTitle: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
