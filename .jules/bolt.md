@@ -1,0 +1,3 @@
+## 2026-03-12 - Prevent Memory Leaks from Animated.loop in React Native
+**Learning:** In React Native, `Animated.loop` can cause memory leaks and background thread activity if not explicitly stopped. Unmounting the component or changing dependency states in a `useEffect` without stopping the loop leaves it running indefinitely in the background.
+**Action:** Always capture the reference returned by `Animated.loop(...)` and explicitly call `.stop()` on it within the cleanup function of the `useEffect` hook.
