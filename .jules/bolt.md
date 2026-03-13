@@ -1,0 +1,3 @@
+## 2024-05-24 - Prevent O(n) re-renders and memory leaks in intentions list
+**Learning:** In React Native with Reanimated or `Animated`, `Animated.loop` continuously evaluates to true unless explicitly stopped using `.stop()`. Also mapping functions in React Native needs `memo` on children component, and `useCallback` on event handlers in the parent to stop excessive O(n) rendering work.
+**Action:** Always capture the `animation` reference inside `useEffect` and invoke `animation.stop()` in a cleanup block when unmounting or changing dependency states. Additionally, when lists are being mapped, wrap row components in `React.memo` and strictly supply stable callbacks created by `useCallback` to prevent deep performance drains over thousands of renderings.
