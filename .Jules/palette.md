@@ -1,0 +1,3 @@
+## 2026-03-13 - Added explicitly defined accessibility states for custom interactive components.
+**Learning:** When using custom React Native components (like TouchableOpacity) to mimic checkboxes, they must explicitly declare native accessibility features. Providing `accessibilityRole="checkbox"` helps screen readers understand the component, while `accessibilityState={{ checked: ... }}` communicates its current toggle state to users.
+**Action:** Always include `accessibilityRole`, `accessibilityState`, `accessibilityLabel`, and `accessibilityHint` when creating interactive elements that don't use platform default semantic tags to ensure full accessibility support.
