@@ -1,0 +1,3 @@
+## 2024-05-14 - Improve accessibility of intention toggles
+**Learning:** In React Native, custom interactive elements (like `TouchableOpacity` mimicking a checkbox) must explicitly declare native accessibility features to be usable by screen readers. A simple pressable area is not enough.
+**Action:** When using `TouchableOpacity` or similar components as custom UI elements (like checkboxes, radios, or switches), always explicitly set `accessibilityRole="checkbox"`, `accessibilityState={{ checked: ... }}`, and an `accessibilityLabel` or `accessibilityHint`.
