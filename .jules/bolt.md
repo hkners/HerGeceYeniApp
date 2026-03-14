@@ -1,0 +1,3 @@
+## 2024-05-18 - Animated.loop Memory Leak
+**Learning:** `Animated.loop` without a `.stop()` cleanup function causes background thread leakage in React Native.
+**Action:** Always capture the reference to `Animated.loop` and explicitly return a cleanup function in `useEffect` that calls `.stop()` to prevent memory leaks and background thread activity when the component unmounts or dependencies change.
