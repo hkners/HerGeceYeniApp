@@ -1,95 +1,147 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = (width - 48 - 16) / 2; // 48 is horizontal padding, 16 is gap
+
+const DUMMY_DATA = [
+  {
+    id: '1',
+    title: 'Leica M11',
+    category: 'Tech',
+    height: 220,
+    image: 'https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?q=80&w=600&auto=format&fit=crop',
+    isAura: true,
+  },
+  {
+    id: '2',
+    title: 'Cashmere Sweater',
+    category: 'Wardrobe',
+    height: 180,
+    image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop',
+  },
+  {
+    id: '3',
+    title: 'Chemex Classic',
+    category: 'Home',
+    height: 250,
+    image: 'https://images.unsplash.com/photo-1512568400610-62da28bc8a13?q=80&w=600&auto=format&fit=crop',
+  },
+  {
+    id: '4',
+    title: 'MacBook Pro',
+    category: 'Tech',
+    height: 160,
+    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop',
+    isAura: true,
+  },
+  {
+    id: '5',
+    title: 'Eames Chair',
+    category: 'Furniture',
+    height: 200,
+    image: 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?q=80&w=600&auto=format&fit=crop',
+  },
+  {
+    id: '6',
+    title: 'Moleskine Diary',
+    category: 'Stationery',
+    height: 150,
+    image: 'https://images.unsplash.com/photo-1531346878377-a541fa4b34f0?q=80&w=600&auto=format&fit=crop',
+  },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const ItemCard = ({ item }) => {
+  const scale = useSharedValue(1);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 150 });
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+    <Animated.View style={[styles.cardContainer, animatedStyle]}>
       <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        activeOpacity={0.9}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[styles.card, { height: item.height }]}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
+        <Image source={{ uri: item.image }} style={styles.cardImage} />
+        {/* Glassmorphic overlay simulation */}
+        <View style={styles.cardOverlay}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardCategory}>{item.category}</Text>
+        </View>
+        {item.isAura && <View style={styles.auraRing} />}
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
-
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
-  };
+  // Split data into two columns for masonry effect
+  const leftColumn = DUMMY_DATA.filter((_, i) => i % 2 === 0);
+  const rightColumn = DUMMY_DATA.filter((_, i) => i % 2 !== 0);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+          <Text style={styles.headerTitle}>LUVA</Text>
+          <Text style={styles.headerSubtitle}>The Mindful Inventory</Text>
         </View>
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
-            />
-          ))}
+        <View style={styles.masonryContainer}>
+          <View style={styles.column}>
+            {leftColumn.map((item) => (
+              <ItemCard key={item.id} item={item} />
+            ))}
+          </View>
+          <View style={styles.column}>
+            {rightColumn.map((item) => (
+              <ItemCard key={item.id} item={item} />
+            ))}
+          </View>
         </View>
-
       </ScrollView>
+
+      {/* FAB */}
+      <View style={styles.fabContainer}>
+        <TouchableOpacity style={styles.fab} activeOpacity={0.8}>
+          <Text style={styles.fabText}>CURATE</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -97,68 +149,122 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA', // Alabaster / Clean Girl aesthetic
   },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+  scrollContent: {
+    paddingHorizontal: 24, // Airy spacing
+    paddingTop: Platform.OS === 'android' ? 60 : 40,
+    paddingBottom: 100,
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 32,
     alignItems: 'center',
   },
-  title: {
+  headerTitle: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
-    marginBottom: 8,
+    color: '#1A1A1A',
+    letterSpacing: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-light',
   },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#888888',
-    letterSpacing: 0.5,
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#6B7280', // Muted Slate
+    marginTop: 8,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  listContainer: {
-    gap: 20,
+  masonryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+  column: {
+    width: COLUMN_WIDTH,
+    gap: 16,
+  },
+  cardContainer: {
+    width: '100%',
+    borderRadius: 20, // Soft corners
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#E0E7FF', // Soft Periwinkle shadow
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  card: {
+    width: '100%',
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#F9FAFB',
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  cardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Simulated glassmorphism
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.5)',
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
-  },
-  intentionText: {
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  cardCategory: {
+    fontSize: 11,
+    color: '#6B7280',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  auraRing: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#FDF2F8', // Champagne Pink glow
+    opacity: 0.8,
+    pointerEvents: 'none',
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'box-none',
+  },
+  fab: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 30, // Pill shape
+    shadowColor: '#E0E7FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    borderTopColor: '#FDF2F8', // Inner glow highlight
+  },
+  fabText: {
+    color: '#1A1A1A',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 2,
   },
 });
