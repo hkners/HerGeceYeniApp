@@ -1,0 +1,3 @@
+## 2024-05-15 - Animated.loop Memory Leaks in Lists
+**Learning:** In React Native list items with continuous animations (`Animated.loop`), failing to explicitly capture the animation reference and calling `.stop()` on unmount/dependency change causes silent memory leaks and background thread CPU usage, which becomes worse as items map.
+**Action:** Always capture the reference returned by `Animated.loop` and explicitly call its `.stop()` method inside the `useEffect` cleanup function.
