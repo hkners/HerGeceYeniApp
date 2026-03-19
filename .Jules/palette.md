@@ -1,0 +1,3 @@
+## 2024-03-19 - Accessible Checkboxes in React Native
+**Learning:** Custom interactive elements like `TouchableOpacity` mimicking a checkbox require explicitly declaring native accessibility features to be usable by screen readers, as they don't inherit default checkbox semantics like web elements do.
+**Action:** Always include `accessibilityRole="checkbox"`, `accessibilityState={{ checked: ... }}`, and an `accessibilityLabel` when using `TouchableOpacity` to create custom checkbox-like toggles in React Native.
