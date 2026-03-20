@@ -1,0 +1,3 @@
+## 2024-05-24 - Semantic Accessibility for React Native Intention Toggles
+**Learning:** React Native custom interactive elements (like `TouchableOpacity` acting as a checkbox) lack explicit native accessibility roles and states. If a visually-impaired user uses a screen reader, they might hear "Morning Meditation" but not know it acts like a checkbox.
+**Action:** Always add semantic accessibility features (`accessibilityRole="checkbox"`, `accessibilityState={{ checked: ... }}`, `accessibilityLabel`) to components that functionally mimic native accessible inputs.
