@@ -1,0 +1,3 @@
+## 2024-05-24 - Optimizing React Native List Rendering and Animated.loop Memory Leaks
+**Learning:** O(n) rendering work can occur when mapping list components if custom row components aren't wrapped in `React.memo` and passed stable callbacks. Additionally, `Animated.loop` can cause memory leaks and background thread activity if the animation is not stopped properly when the component unmounts or dependency states change.
+**Action:** Always wrap list row components in `React.memo` and use `useCallback` for event handlers passed to them. Furthermore, always capture the reference of `Animated.loop` and call `.stop()` inside the `useEffect` cleanup function.
