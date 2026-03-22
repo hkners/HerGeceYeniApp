@@ -1,0 +1,3 @@
+## 2024-05-24 - Prevent Memory Leaks and O(n) re-renders in List Animations
+**Learning:** Found an issue where React Native's `Animated.loop` would leak memory and potentially block the background thread because it lacked an explicit `.stop()` call upon component unmount or state transitions. Additionally, the `BreathingContainer` row component inside the list re-rendered on every list state update, creating O(n) work for the render loop instead of O(1).
+**Action:** Always capture the `Animated.loop` return value and invoke `.stop()` in the `useEffect` cleanup function. Wrap mapped row components with `React.memo()` and use `useCallback` for their event handlers to prevent unnecessary re-renders when list data changes.
