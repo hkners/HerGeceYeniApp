@@ -1,0 +1,3 @@
+## 2024-05-14 - explicit accessibility props on touchables
+**Learning:** In React Native, custom interactive elements constructed with components like `TouchableOpacity` do not automatically convey semantic meaning to assistive technologies like screen readers. When acting as a checkbox (toggling state), screen readers might only announce "Button" without the component's current state.
+**Action:** Always provide `accessibilityRole` (e.g., `"checkbox"`), `accessibilityState` (e.g., `{ checked: boolean }`), `accessibilityLabel`, and an `accessibilityHint` to clarify the component's purpose and state to users with assistive technology when building custom interactive touchable elements.
