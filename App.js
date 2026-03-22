@@ -1,164 +1,467 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+  runOnJS,
+  Easing,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
+const { width, height } = Dimensions.get('window');
+
+// --- COLORS (Strictly adhered to) ---
+const COLORS = {
+  background: '#FAFAFA', // Alabaster/Ultra-light off-white
+  surface: '#FFFFFF',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B7280',
+  accentPeach: '#FFDAB9',
+  accentPink: '#FFC0CB',
+  // Colors mentioned in issue 55 (Aether) & 51 (Luva) mapped to allowed colors where possible
+  // Using pure white/alabaster for the airy minimal feel
+};
+
+// --- MOCK DATA ---
+const INITIAL_TASKS = [
+  { id: '1', title: 'Deep Work: Project Proposal', priority: 'high', size: 120 },
+  { id: '2', title: 'Review PRs', priority: 'medium', size: 90 },
+  { id: '3', title: 'Reply to Emails', priority: 'low', size: 70 },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const ENVIRONMENTS = [
+  { id: 'e1', title: 'Library in a Rainstorm' },
+  { id: 'e2', title: 'Morning in Kyoto' },
+  { id: 'e3', title: 'Deep Space' },
+];
+
+// --- COMPONENTS ---
+
+// 1. The "Breathe-Sync" Launchpad
+const CenteringScreen = ({ onComplete }) => {
+  const scale = useSharedValue(0.8);
+  const opacity = useSharedValue(1);
 
   useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+    // 10-second centering animation (simplified for prototype)
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.5, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.8, { duration: 2500, easing: Easing.inOut(Easing.ease) })
+      ),
+      2, // Do it twice (10 seconds total)
+      true,
+      (finished) => {
+        if (finished) {
+           runOnJS(onComplete)();
+        }
+      }
+    );
+  }, [scale, onComplete]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
-  };
-
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+    <View style={[styles.centerContainer, { backgroundColor: COLORS.background }]}>
+      <Text style={styles.heroText}>Sync your breath.</Text>
+      <Animated.View style={[styles.breathingRing, animatedStyle]} />
+      <Text style={styles.subText}>Hold to begin</Text>
+    </View>
+  );
+};
+
+// 2. The "Vapor" Task Bubble
+const TaskBubble = ({ task, onDissipate }) => {
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const floatY = useSharedValue(0);
+
+  // Gentle floating animation
+  useEffect(() => {
+    floatY.value = withRepeat(
+      withSequence(
+        withTiming(-5, { duration: 2000 + Math.random() * 1000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(5, { duration: 2000 + Math.random() * 1000, easing: Easing.inOut(Easing.sine) })
+      ),
+      -1,
+      true
+    );
+
+    // Cleanup loop on unmount to prevent memory leaks
+    return () => {
+        // Stop animations if component unmounts
+        // Reanimated 3 automatically cancels, but explicit cancellation is good practice
+    };
+  }, [floatY]);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
+
+  const handleLongPress = () => {
+    // "Swipe up to dissipate" interaction
+    translateY.value = withTiming(-height, { duration: 800, easing: Easing.out(Easing.exp) }, (finished) => {
+        if (finished) {
+            runOnJS(onDissipate)(task.id);
+        }
+    });
+    scale.value = withTiming(0, { duration: 800 });
+  };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateY: translateY.value + floatY.value },
+        { scale: scale.value },
+      ],
+      opacity: interpolate(translateY.value, [0, -200], [1, 0], Extrapolation.CLAMP),
+    };
+  });
+
+  // Calculate dynamic styling based on priority
+  const bubbleStyles = useMemo(() => {
+     let bgColor = 'rgba(255, 255, 255, 0.4)';
+     let borderColor = 'rgba(255, 255, 255, 0.5)';
+     let shadowColor = COLORS.accentPeach;
+
+     if (task.priority === 'high') {
+         bgColor = 'rgba(255, 218, 185, 0.3)'; // Peach
+         shadowColor = COLORS.accentPeach;
+     } else if (task.priority === 'medium') {
+         bgColor = 'rgba(255, 192, 203, 0.3)'; // Pink
+         shadowColor = COLORS.accentPink;
+     }
+
+     return {
+        width: task.size,
+        height: task.size,
+        borderRadius: task.size / 2,
+        backgroundColor: bgColor,
+        borderColor: borderColor,
+        shadowColor: shadowColor,
+     };
+  }, [task]);
+
+
+  return (
+    <Animated.View style={[styles.bubbleWrapper, animatedStyle]}>
       <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        activeOpacity={0.9}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onLongPress={handleLongPress}
+        delayLongPress={300} // Require deliberate hold/swipe up intent
+        style={[styles.taskBubble, bubbleStyles]}
+        accessibilityRole="button"
+        accessibilityLabel={`Task: ${task.title}. Long press to complete.`}
+        accessibilityHint="Dissipates the task"
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
+        <Text style={styles.bubbleText} numberOfLines={3}>{task.title}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
+// Environment Card with Tactile Feedback
+const EnvCard = ({ env, isActive, onSelect }) => {
+    const scale = useSharedValue(1);
 
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
+    const handlePressIn = () => {
+        scale.value = withSpring(0.95);
+    };
+
+    const handlePressOut = () => {
+        scale.value = withSpring(1);
+    };
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: scale.value }],
+        };
+    });
+
+    return (
+        <Animated.View style={animatedStyle}>
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                style={[
+                    styles.envCard,
+                    isActive && styles.envCardActive
+                ]}
+                onPress={() => onSelect(env.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Environment: ${env.title}`}
+            >
+                <Text style={[
+                    styles.envCardText,
+                    isActive && styles.envCardTextActive
+                ]}>{env.title}</Text>
+            </TouchableOpacity>
+        </Animated.View>
     );
-  };
+};
+
+// 3. Sensory Environment Selector
+const EnvironmentSelector = ({ activeEnv, onSelect }) => {
+    return (
+        <View style={styles.envContainer}>
+            <Text style={styles.sectionTitle}>The Chamber</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.envScroll}>
+                {ENVIRONMENTS.map((env) => {
+                    const isActive = activeEnv === env.id;
+                    return (
+                        <EnvCard
+                            key={env.id}
+                            env={env}
+                            isActive={isActive}
+                            onSelect={onSelect}
+                        />
+                    );
+                })}
+            </ScrollView>
+        </View>
+    );
+};
+
+// --- MAIN APP ENTRY POINT ---
+export default function App() {
+  const [isCentered, setIsCentered] = useState(false);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [activeEnv, setActiveEnv] = useState(ENVIRONMENTS[0].id);
+
+  // Background color transition based on environment
+  const bgProgress = useSharedValue(0);
+
+  useEffect(() => {
+    bgProgress.value = withTiming(bgProgress.value === 0 ? 1 : 0, { duration: 2000 });
+  }, [activeEnv, bgProgress]);
+
+  const bgStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: withTiming(
+        bgProgress.value === 1 ? COLORS.surface : COLORS.background,
+        { duration: 1000 }
+      ),
+    };
+  });
+
+
+  const handleDissipate = useCallback((id) => {
+    setTasks((prev) => prev.filter(t => t.id !== id));
+  }, []);
+
+  if (!isCentered) {
+    return <CenteringScreen onComplete={() => setIsCentered(true)} />;
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+    <Animated.View style={[styles.container, bgStyle]}>
+      <SafeAreaView style={styles.safeArea}>
+
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+            <Text style={styles.headerTitle}>Aether</Text>
+            <Text style={styles.headerSubtitle}>Curate your headspace</Text>
         </View>
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
-            />
-          ))}
+        {/* Task Area (Vapor) */}
+        <View style={styles.tasksContainer}>
+            {tasks.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>Flow State Achieved.</Text>
+                </View>
+            ) : (
+                <View style={styles.bubblesArea}>
+                    {tasks.map((task, index) => (
+                        <TaskBubble
+                            key={task.id}
+                            task={task}
+                            onDissipate={handleDissipate}
+                        />
+                    ))}
+                </View>
+            )}
         </View>
 
-      </ScrollView>
-    </SafeAreaView>
+        {/* Environment Selector */}
+        <View style={styles.bottomSection}>
+             <EnvironmentSelector activeEnv={activeEnv} onSelect={setActiveEnv} />
+        </View>
+
+      </SafeAreaView>
+    </Animated.View>
   );
 }
 
+// --- STYLES ---
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
   },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  header: {
-    marginBottom: 40,
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
+  heroText: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    letterSpacing: 0.5,
+    marginBottom: 40,
+    fontFamily: 'System', // Fallback to system sans-serif
   },
-  subtitle: {
+  subText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 40,
+    fontWeight: '300',
+  },
+  breathingRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: COLORS.accentPeach,
+    backgroundColor: 'rgba(255, 218, 185, 0.1)', // Soft peach glow
+    shadowColor: COLORS.accentPink,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 5,
+  },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    letterSpacing: 2,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '300',
+    marginTop: 8,
+  },
+  tasksContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 18,
+    color: COLORS.textSecondary,
+    fontWeight: '300',
+    letterSpacing: 1,
+  },
+  bubblesArea: {
+    width: '100%',
+    height: 400,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20, // Requires newer React Native versions, fallback to margins if needed
+    padding: 20,
+  },
+  bubbleWrapper: {
+    margin: 10,
+  },
+  taskBubble: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 15,
+    borderWidth: 1,
+    // Soft highlight technique (mimicking glassmorphism without heavy blur libs)
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  bubbleText: {
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '400',
-    color: '#888888',
-    letterSpacing: 0.5,
+    textAlign: 'center',
   },
-  listContainer: {
-    gap: 20,
+  bottomSection: {
+    paddingBottom: 40,
   },
-  intentionContainer: {
-    paddingVertical: 24,
+  envContainer: {
+    paddingHorizontal: 24,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  envScroll: {
+    paddingRight: 24,
+  },
+  envCard: {
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 10,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    elevation: 1,
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+  envCardActive: {
+    backgroundColor: COLORS.accentPeach,
+    borderColor: COLORS.accentPeach,
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  envCardText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '400',
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
-  },
-  intentionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+  envCardTextActive: {
+    color: COLORS.textPrimary,
+    fontWeight: '600',
   },
 });
