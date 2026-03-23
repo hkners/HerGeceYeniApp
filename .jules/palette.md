@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility Roles for Custom Interactive Elements
+**Learning:** Custom interactive elements like `TouchableOpacity` in React Native lack inherent semantic meaning and must explicitly declare accessibility attributes (`accessibilityRole`, `accessibilityState`, `accessibilityLabel`, `accessibilityHint`) for screen readers to properly interpret them.
+**Action:** Always add semantic accessibility props to custom touchable wrappers, especially when they behave like standard native controls (e.g., checkboxes, switches).
