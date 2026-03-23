@@ -1,0 +1,3 @@
+## 2024-05-24 - React Native Animated Loop Memory Leak
+**Learning:** Found a memory leak pattern in React Native where an `Animated.loop` is started in a `useEffect` but the animation reference is never captured and `.stop()` is never called when dependencies change or the component unmounts. This can cause the animation to keep running indefinitely, consuming memory and background thread resources.
+**Action:** When using `Animated.loop` in a `useEffect`, always store the animation reference in a variable, start it, and return a cleanup function that calls `.stop()` on that specific animation reference.
