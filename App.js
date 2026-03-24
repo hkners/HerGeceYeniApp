@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 
 const INITIAL_INTENTIONS = [
@@ -9,7 +9,9 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
+// ⚡ Bolt Optimization: Wrapped in React.memo to prevent unnecessary re-renders of the entire list when one intention is toggled.
+// Reduces re-renders from O(N) to O(1) per toggle interaction, significantly improving perceived performance on longer lists.
+const BreathingContainer = memo(({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -57,18 +59,20 @@ const BreathingContainer = ({ intention, onToggle }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // ⚡ Bolt Optimization: Wrapped in useCallback to preserve function reference across App re-renders.
+  // This allows BreathingContainer's memoization to effectively skip re-renders.
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
