@@ -1,0 +1,17 @@
+
+> hergeceyeniapp@1.0.0 web /app
+> expo start --web
+
+Starting project at /app
+Starting Metro Bundler
+
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native-reanimated@3.16.7 - expected version: 4.2.1
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 62.0% (107/166)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 65.7% (266/330)
+Web Bundled 9586ms index.js (424 modules)
+ LOG  [web] Logs will appear in the browser console
