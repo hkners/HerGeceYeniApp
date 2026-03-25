@@ -1,0 +1,3 @@
+## 2024-05-24 - Interactive Component Accessibility
+**Learning:** In React Native, custom interactive elements (e.g., `TouchableOpacity` functioning as a checkbox) lack inherent semantic meaning and must explicitly declare `accessibilityRole`, `accessibilityState`, and `accessibilityLabel`/`accessibilityHint` for assistive technologies.
+**Action:** Always verify if a `TouchableOpacity` is simulating a native component like a checkbox or button, and manually apply the correct accessibility attributes.
