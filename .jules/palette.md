@@ -1,0 +1,3 @@
+## 2024-03-26 - Add Accessibility Roles to Checkbox Proxies
+**Learning:** Custom interactive elements (like TouchableOpacity) acting as checkboxes require explicit semantic roles (`accessibilityRole="checkbox"`) and states (`accessibilityState={{ checked: ... }}`) for screen readers to interpret them correctly.
+**Action:** Always add semantic roles, states, and labels to non-standard interactive elements that emulate standard form controls.
