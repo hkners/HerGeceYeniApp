@@ -1,0 +1,3 @@
+## 2024-10-24 - TouchableOpacity Checkbox Accessibility
+**Learning:** In React Native, TouchableOpacity used as a checkbox or toggle switch lacks inherent semantic meaning for screen readers. Users rely on visual cues (like text strikethrough or colors) which are invisible to assistive technologies.
+**Action:** Always explicitly declare accessibilityRole="checkbox", accessibilityState={{ checked: boolean }}, and a clear accessibilityLabel/accessibilityHint on custom interactive components that function as toggles.
