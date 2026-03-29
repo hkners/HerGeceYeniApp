@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 
 const INITIAL_INTENTIONS = [
@@ -59,16 +59,20 @@ const BreathingContainer = ({ intention, onToggle }) => {
   );
 };
 
+// ⚡ Bolt Optimization: Wrapped BreathingContainer in React.memo to prevent unnecessary re-renders of un-toggled list items. Expected impact: Reduces re-renders of all untouched list items by 100% when one item is toggled.
+const MemoizedBreathingContainer = React.memo(BreathingContainer);
+
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // ⚡ Bolt Optimization: Wrapped toggleIntention in useCallback to keep function reference stable across renders. Expected impact: Works in tandem with React.memo on BreathingContainer to actually prevent re-renders.
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -81,7 +85,7 @@ export default function App() {
 
         <View style={styles.listContainer}>
           {intentions.map(intention => (
-            <BreathingContainer
+            <MemoizedBreathingContainer
               key={intention.id}
               intention={intention}
               onToggle={toggleIntention}
