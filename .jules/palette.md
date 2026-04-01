@@ -1,0 +1,3 @@
+## 2024-05-24 - Add Accessibility Roles to Custom Checkboxes
+**Learning:** In React Native, custom interactive elements (e.g., `TouchableOpacity` functioning as a checkbox) lack inherent semantic meaning and must explicitly declare `accessibilityRole`, `accessibilityState`, and `accessibilityLabel`/`accessibilityHint` for assistive technologies.
+**Action:** Always add explicit accessibility props to touchable elements that act as semantic controls.
