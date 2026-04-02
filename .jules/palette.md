@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility for Custom Checkboxes
+**Learning:** Custom interactive elements (e.g., TouchableOpacity functioning as a checkbox) lack inherent semantic meaning and must explicitly declare accessibilityRole, accessibilityState, and accessibilityLabel or accessibilityHint for assistive technologies to work correctly.
+**Action:** Always add accessibilityRole="checkbox", accessibilityState={{ checked: ... }}, accessibilityLabel, and accessibilityHint to custom checkbox components.
