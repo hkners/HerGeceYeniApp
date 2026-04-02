@@ -1,0 +1,3 @@
+## 2025-02-14 - Custom Checkbox Accessibility
+**Learning:** Custom interactive elements in React Native (e.g., using `TouchableOpacity` or `Animated.View` to represent a checkbox) lack semantic meaning out of the box. Simply changing colors or crossing out text does not communicate state to screen readers.
+**Action:** Applied `accessibilityRole="checkbox"`, `accessibilityLabel={intention.title}`, and `accessibilityState={{ checked: intention.completed }}` to the custom intention container components. This ensures assistive technologies correctly announce the element's purpose and its current toggled state.

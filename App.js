@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withRepeat,
+  withSpring,
+  cancelAnimation
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -10,28 +19,38 @@ const INITIAL_INTENTIONS = [
 ];
 
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // ⚡ Bolt: Using react-native-reanimated for UI-thread animations.
+  // Impact: Eliminates React state re-renders and bridge traffic during continuous looping animations.
+  const pulseScale = useSharedValue(1);
+  const pressScale = useSharedValue(1);
 
   useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 2000 }),
+          withTiming(1, { duration: 2000 })
+        ),
+        -1, // infinite loop
+        true // reverse
+      );
     } else {
-      pulseAnim.setValue(1);
+      cancelAnimation(pulseScale);
+      pulseScale.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+
+    return () => {
+      cancelAnimation(pulseScale);
+    };
+  }, [intention.priority, intention.completed, pulseScale]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: pulseScale.value * pressScale.value }
+      ],
+    };
+  });
 
   const getContainerStyle = () => {
     if (intention.completed) return styles.containerCompleted;
@@ -41,15 +60,28 @@ const BreathingContainer = ({ intention, onToggle }) => {
 
   const getTextColor = () => {
     if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+    return 'darkslategray';
+  };
+
+  const handlePressIn = () => {
+    pressScale.value = withSpring(0.95);
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1);
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+    <Animated.View style={animatedStyle}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => onToggle(intention.id)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         style={[styles.intentionContainer, getContainerStyle()]}
+        accessibilityRole="checkbox"
+        accessibilityLabel={intention.title}
+        accessibilityState={{ checked: intention.completed }}
       >
         <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
           {intention.title}
@@ -75,7 +107,7 @@ export default function App() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
+          <Text style={styles.title}>Daily Flow</Text>
           <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
         </View>
 
@@ -112,7 +144,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: 'darkslategray',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -128,7 +160,7 @@ const styles = StyleSheet.create({
   intentionContainer: {
     paddingVertical: 24,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 20, // soft corners
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
@@ -145,9 +177,9 @@ const styles = StyleSheet.create({
   containerHighPriority: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
+    borderColor: '#FFDAB9', // Soft highlight (peach)
+    shadowColor: '#FFC0CB', // Blush pink shadow
+    shadowOpacity: 0.15,
     shadowRadius: 15,
   },
   containerCompleted: {
