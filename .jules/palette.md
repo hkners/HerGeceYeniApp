@@ -1,0 +1,3 @@
+## 2024-10-24 - TouchableOpacity as Checkbox Accessibility
+**Learning:** Custom interactive elements (e.g., `TouchableOpacity` functioning as a checkbox) lack inherent semantic meaning for assistive technologies, preventing screen readers from announcing their state.
+**Action:** Always add `accessibilityRole="checkbox"`, `accessibilityState`, and `accessibilityLabel`/`accessibilityHint` to custom checkbox components.
