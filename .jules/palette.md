@@ -1,0 +1,3 @@
+## 2024-05-24 - Semantic Roles for Custom Checkboxes in React Native
+**Learning:** Custom interactive elements in React Native (like `TouchableOpacity` acting as a checkbox) lack inherent semantic meaning and require explicit `accessibilityRole`, `accessibilityState`, `accessibilityLabel`, and `accessibilityHint` for screen readers to interpret them correctly. Also, continuous animations (like `Animated.loop`) can cause issues for automated interaction tools waiting for element stability.
+**Action:** Always add semantic accessibility props to custom UI components functioning as standard controls (e.g., checkboxes, radios) to ensure they are accessible to assistive technologies. Use `force=True` in Playwright when interacting with continuously animating elements.
