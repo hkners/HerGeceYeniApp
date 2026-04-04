@@ -1,0 +1,3 @@
+## 2024-04-04 - Missing Semantic Roles on Custom Checkable Elements
+**Learning:** The `BreathingContainer` component in this app uses `TouchableOpacity` to create custom toggleable list items (acting as checkboxes), but completely lacks semantic meaning (`accessibilityRole`, `accessibilityState`). Screen readers announce these simply as "button" or "clickable" without indicating their checked state.
+**Action:** When creating custom toggleable elements (like checkboxes) in React Native using `TouchableOpacity`, always explicitly declare `accessibilityRole="checkbox"`, provide the current `accessibilityState={{ checked: ... }}`, and include clear `accessibilityLabel` and `accessibilityHint` so assistive tech can correctly announce the element's purpose and state.
