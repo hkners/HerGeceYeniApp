@@ -50,6 +50,10 @@ const BreathingContainer = ({ intention, onToggle }) => {
         activeOpacity={0.8}
         onPress={() => onToggle(intention.id)}
         style={[styles.intentionContainer, getContainerStyle()]}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: intention.completed }}
+        accessibilityLabel={`Intention: ${intention.title}`}
+        accessibilityHint={intention.completed ? "Tap to mark as incomplete" : "Tap to mark as complete"}
       >
         <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
           {intention.title}

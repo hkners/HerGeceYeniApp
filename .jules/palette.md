@@ -1,0 +1,3 @@
+## 2024-04-06 - TouchableOpacity Checkbox Accessibility
+**Learning:** In React Native, `TouchableOpacity` elements acting as custom checkboxes lack inherent semantic meaning for screen readers and do not automatically expose state. They require explicit `accessibilityRole="checkbox"`, `accessibilityState={{ checked: boolean }}`, and a clear `accessibilityLabel` to be correctly interpreted by assistive technologies.
+**Action:** Always manually apply `accessibilityRole`, `accessibilityState`, and `accessibilityLabel` when using interactive components like `TouchableOpacity` or `Pressable` for state-toggling custom controls.
