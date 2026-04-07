@@ -1,6 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, TouchableWithoutFeedback, ScrollView, SafeAreaView, Platform } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  interpolateColor,
+} from 'react-native-reanimated';
+import { Feather } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -10,52 +20,100 @@ const INITIAL_INTENTIONS = [
 ];
 
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const isHighPriority = intention.priority === 'high' && !intention.completed;
+
+  // Shared values for animation
+  const scale = useSharedValue(1);
+  const pulseScale = useSharedValue(1);
+  const bgTransition = useSharedValue(intention.completed ? 1 : 0);
 
   useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+    if (isHighPriority) {
+      pulseScale.value = withRepeat(
+        withTiming(1.02, { duration: 2000 }),
+        -1, // infinite
+        true // reverse
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulseScale.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [isHighPriority, pulseScale]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  useEffect(() => {
+    bgTransition.value = withTiming(intention.completed ? 1 : 0, { duration: 300 });
+  }, [intention.completed, bgTransition]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      bgTransition.value,
+      [0, 1],
+      [isHighPriority ? '#FFF5F7' : '#FFFFFF', '#FAFAFA']
+    );
+    const borderColor = interpolateColor(
+      bgTransition.value,
+      [0, 1],
+      [isHighPriority ? '#FFC0CB' : '#F0F0F0', '#EAEAEA']
+    );
+
+    return {
+      transform: [
+        { scale: scale.value },
+        { scale: pulseScale.value }
+      ],
+      backgroundColor,
+      borderColor,
+      opacity: intention.completed ? 0.6 : 1,
+    };
+  });
+
+  const animatedCheckStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: withSpring(intention.completed ? 1 : 0) }],
+      opacity: withTiming(intention.completed ? 1 : 0, { duration: 200 })
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+  };
+
+  const handlePress = () => {
+    onToggle(intention.id);
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+      accessibilityLabel={`Toggle intention: ${intention.title}`}
+    >
+      <Animated.View style={[styles.intentionContainer, animatedContainerStyle, isHighPriority && !intention.completed && styles.containerHighPriorityShadow]}>
+        <View style={styles.intentionContent}>
+          <Text style={[
+            styles.intentionText,
+            intention.completed && styles.intentionTextCompleted,
+            isHighPriority && !intention.completed && styles.intentionTextHighPriority
+          ]}>
+            {intention.title}
+          </Text>
+          {isHighPriority && !intention.completed && (
+            <Text style={styles.priorityDot}>•</Text>
+          )}
+        </View>
+        <View style={[styles.customCheckbox, intention.completed && styles.customCheckboxCompleted]}>
+          <Animated.View style={animatedCheckStyle}>
+            <Feather name="check" size={14} color="#FFFFFF" />
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -71,94 +129,136 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
-        </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="dark" />
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Aura Flow</Text>
+            <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+          </View>
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
-            />
-          ))}
-        </View>
+          <View style={styles.listContainer}>
+            {intentions.map(intention => (
+              <BreathingContainer
+                key={intention.id}
+                intention={intention}
+                onToggle={toggleIntention}
+              />
+            ))}
+          </View>
 
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.footer}>
+             <Text style={styles.footerText}>Stay present.</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FFFFFF', // Pure white background for Clean Girl aesthetic
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'web' ? 60 : 40,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 48,
     alignItems: 'center',
+    marginTop: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
-    marginBottom: 8,
+    color: '#2F4F4F', // Dark slate gray
+    letterSpacing: 1.5,
+    marginBottom: 12,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '400',
-    color: '#888888',
+    color: '#808080', // Softer gray for subtitle
     letterSpacing: 0.5,
   },
   listContainer: {
-    gap: 20,
+    gap: 16, // Airy spacing
   },
   intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 24, // Soft, rounded corners
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    // Base shadow, overridden by reanimated for high priority
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  containerHighPriorityShadow: {
+    shadowColor: '#FFC0CB', // Blush pink shadow
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  intentionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   intentionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontSize: 17,
+    fontWeight: '400',
+    color: '#2F4F4F', // Dark slate gray
+    letterSpacing: 0.3,
   },
+  intentionTextCompleted: {
+    color: '#A9A9A9',
+    textDecorationLine: 'line-through',
+  },
+  intentionTextHighPriority: {
+    fontWeight: '500',
+    color: '#2F4F4F',
+  },
+  priorityDot: {
+    color: '#FFDAB9', // Soft peach dot for high priority
+    fontSize: 24,
+    marginLeft: 8,
+    lineHeight: 24,
+  },
+  customCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14, // Completely circular
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    marginLeft: 16,
+  },
+  customCheckboxCompleted: {
+    backgroundColor: '#FFDAB9', // Soft peach for completed state
+    borderColor: '#FFDAB9',
+  },
+  footer: {
+    marginTop: 60,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#D3D3D3',
+    fontStyle: 'italic',
+    letterSpacing: 1,
+  }
 });
