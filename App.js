@@ -13,8 +13,11 @@ const BreathingContainer = ({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // ⚡ Bolt: Capture animation reference to stop it properly on cleanup
+    // Impact: Prevents memory and CPU leaks from animations running indefinitely in the background on the native thread.
+    let animation = null;
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
+      animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -27,10 +30,16 @@ const BreathingContainer = ({ intention, onToggle }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
     } else {
       pulseAnim.setValue(1);
     }
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
   }, [intention.priority, intention.completed, pulseAnim]);
 
   const getContainerStyle = () => {
