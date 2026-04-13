@@ -1,0 +1,3 @@
+## 2024-05-18 - Missing Semantic Meaning in Custom Toggles
+**Learning:** In React Native Web, custom interactive elements like `TouchableOpacity` functioning as checkboxes lack inherent semantic meaning and do not automatically render with `role="checkbox"`. This breaks accessibility for screen readers.
+**Action:** Always explicitly declare `accessibilityRole`, `accessibilityState`, and `accessibilityLabel` or `accessibilityHint` for custom interactive elements to ensure assistive technologies can properly understand and interact with them.
