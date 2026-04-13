@@ -12,9 +12,12 @@ const INITIAL_INTENTIONS = [
 const BreathingContainer = ({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+// ⚡ Bolt: Capture Animated.loop reference and explicitly call .stop() in cleanup to prevent orphaned animations on the native thread, avoiding CPU/battery drain.
+// Impact: Eliminates infinite orphaned animation resource leaks when dependencies change, significantly improving long-term performance.
   useEffect(() => {
+    let animation;
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
+      animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -27,10 +30,17 @@ const BreathingContainer = ({ intention, onToggle }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
     } else {
       pulseAnim.setValue(1);
     }
+
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
   }, [intention.priority, intention.completed, pulseAnim]);
 
   const getContainerStyle = () => {
