@@ -1,0 +1,3 @@
+## 2025-04-16 - Prevent Animated.loop memory leaks
+**Learning:** In React Native, `Animated.loop` with `useNativeDriver: true` will run indefinitely on the native thread, leaking memory, if it is not explicitly stopped when the component unmounts or its dependencies change.
+**Action:** Always capture the animation reference and call `.stop()` in the cleanup function of `useEffect` to prevent orphaned animations.
