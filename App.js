@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 
 const INITIAL_INTENTIONS = [
@@ -9,12 +9,14 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
+// ⚡ Bolt: Memoized component to prevent unnecessary re-renders of list items
+const BreathingContainer = React.memo(({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    let anim;
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
+      anim = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -27,10 +29,18 @@ const BreathingContainer = ({ intention, onToggle }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      anim.start();
     } else {
       pulseAnim.setValue(1);
     }
+
+    // ⚡ Bolt: Explicitly stop the animation on cleanup to prevent native thread resource leaks
+    return () => {
+      if (anim) {
+        anim.stop();
+      }
+    };
   }, [intention.priority, intention.completed, pulseAnim]);
 
   const getContainerStyle = () => {
@@ -57,18 +67,19 @@ const BreathingContainer = ({ intention, onToggle }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // ⚡ Bolt: Memoize the callback to prevent invalidating React.memo on child components
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
