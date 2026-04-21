@@ -1,0 +1,3 @@
+## 2025-04-21 - React Native Animated.loop Native Thread Leaks
+**Learning:** In React Native, when using `Animated.loop` with `useNativeDriver: true`, the animation continues running indefinitely on the native thread even if the component unmounts or `useEffect` dependencies change.
+**Action:** Always capture the animation reference (`const animation = Animated.loop(...)`) and explicitly call `animation.stop()` in the `useEffect` cleanup function to prevent orphaned animations and resource leaks.
