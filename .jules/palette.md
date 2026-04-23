@@ -1,0 +1,3 @@
+## 2024-04-23 - Custom Checkbox Accessibility in React Native
+**Learning:** When creating custom interactive elements with TouchableOpacity that function as checkboxes or toggles, they lack built-in screen reader support. They must explicitly include accessibilityRole="checkbox" and accessibilityState={{ checked: <boolean> }} to properly communicate their function and state to assistive technologies.
+**Action:** Always add accessibilityRole and accessibilityState to custom toggle components to ensure proper screen reader support.
