@@ -1,0 +1,3 @@
+## 2024-04-24 - Accessible Custom Checkboxes
+**Learning:** Custom interactive elements built with `TouchableOpacity` that toggle state (like a to-do item) are opaque to screen readers without explicit accessibility props.
+**Action:** Always include `accessibilityRole="checkbox"`, `accessibilityState={{ checked: <boolean> }}`, `accessibilityLabel`, and `accessibilityHint` for custom checkboxes to ensure proper screen reader support.
