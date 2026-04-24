@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, interpolateColor } from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,53 +10,62 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+  const completedProgress = useSharedValue(intention.completed ? 1 : 0);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
-
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, { damping: 10, stiffness: 200 });
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 10, stiffness: 200 });
+    onToggle(intention.id);
   };
+
+  // Update completed progress when intention.completed changes
+  React.useEffect(() => {
+    completedProgress.value = withTiming(intention.completed ? 1 : 0, { duration: 300 });
+  }, [intention.completed]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      [intention.priority === 'high' ? '#FFDAB9' : '#FFFFFF', '#FAFAFA']
+    );
+    const opacity = interpolateColor(completedProgress.value, [0, 1], [1, 0.6]);
+
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor,
+      opacity,
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      ['#2F4F4F', '#A9A9A9']
+    );
+    return { color };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <AnimatedPressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[styles.intentionContainer, animatedContainerStyle]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+    >
+      <Animated.Text style={[styles.intentionText, animatedTextStyle, { textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+        {intention.title}
+      </Animated.Text>
+    </AnimatedPressable>
   );
 };
 
@@ -97,7 +107,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -112,14 +122,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: '#2F4F4F',
     letterSpacing: 2,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#888888',
+    color: '#808080',
     letterSpacing: 0.5,
   },
   listContainer: {
@@ -129,32 +139,15 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowColor: '#FFC0CB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+    borderColor: '#FFF0F5',
   },
   intentionText: {
     fontSize: 16,
