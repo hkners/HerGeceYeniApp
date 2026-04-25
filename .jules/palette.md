@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessible Minimalist Checkboxes
+**Learning:** In highly minimalist 'clean girl' designs, custom interactive containers (like `BreathingContainer`) often omit traditional visual checkmarks to maintain a spacious aesthetic. This creates an accessibility gap because the toggle state (e.g., strike-through text or opacity changes) is only communicated visually.
+**Action:** Always add `accessibilityRole="checkbox"` and `accessibilityState={{ checked: <boolean> }}` to these custom `TouchableOpacity` containers. This preserves the minimalist visual design while ensuring screen readers can correctly announce the interaction and current state.
