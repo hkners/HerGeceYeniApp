@@ -9,12 +9,15 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
+/* ⚡ Bolt Optimization: Wrap with React.memo to prevent unnecessary re-renders when other intentions are toggled */
+const BreathingContainer = React.memo(({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    /* ⚡ Bolt Optimization: Capture loop animation ref to stop it on cleanup and prevent native driver memory leak */
+    let loopAnim;
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
+      loopAnim = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -27,10 +30,17 @@ const BreathingContainer = ({ intention, onToggle }) => {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      loopAnim.start();
     } else {
       pulseAnim.setValue(1);
     }
+
+    return () => {
+      if (loopAnim) {
+        loopAnim.stop();
+      }
+    };
   }, [intention.priority, intention.completed, pulseAnim]);
 
   const getContainerStyle = () => {
@@ -57,18 +67,19 @@ const BreathingContainer = ({ intention, onToggle }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  /* ⚡ Bolt Optimization: Memoize callback to pass stable reference to memoized children components */
+  const toggleIntention = React.useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
