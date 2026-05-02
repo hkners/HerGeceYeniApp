@@ -50,6 +50,10 @@ const BreathingContainer = ({ intention, onToggle }) => {
         activeOpacity={0.8}
         onPress={() => onToggle(intention.id)}
         style={[styles.intentionContainer, getContainerStyle()]}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: intention.completed }}
+        accessibilityLabel={intention.title}
+        accessibilityHint="Toggles intention completion"
       >
         <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
           {intention.title}
@@ -75,7 +79,7 @@ export default function App() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
+          <Text style={styles.title} accessibilityRole="header">Aura Flow</Text>
           <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
         </View>
 
