@@ -1,0 +1,3 @@
+## 2024-05-20 - Custom Checkbox Accessibility
+**Learning:** In React Native prototypes that use `TouchableOpacity` as a custom checkbox or toggle, screen readers will not announce their state without explicit ARIA equivalents.
+**Action:** Always add `accessibilityRole="checkbox"` and `accessibilityState={{ checked: boolean }}` to custom toggle elements to ensure screen readers correctly interpret them.
