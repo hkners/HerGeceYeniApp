@@ -1,0 +1,3 @@
+## 2024-05-12 - Functional state updates are crucial for React.useCallback optimizations
+**Learning:** When using `React.useCallback` to memoize a state update function (like `toggleIntention`), it is critical to use the functional state update form (`setIntentions(prev => ...)`) rather than depending on the current state. This allows the dependency array to remain empty (`[]`), ensuring the callback reference never changes, which is required for `React.memo` on child components to work properly.
+**Action:** Always prefer functional state updates inside `useCallback` when optimizing list item re-renders to guarantee stable function references and avoid stale closures.
