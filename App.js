@@ -9,7 +9,8 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
+// ⚡ Bolt: Wrapped in React.memo to prevent re-rendering all list items when one is toggled
+const BreathingContainer = React.memo(({ intention, onToggle }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -57,18 +58,19 @@ const BreathingContainer = ({ intention, onToggle }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // ⚡ Bolt: Memoized handler to maintain stable reference for React.memo children
+  const toggleIntention = React.useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
