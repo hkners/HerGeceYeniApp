@@ -1,6 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  interpolateColor,
+  withRepeat,
+  withSequence,
+  Easing
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,29 +19,80 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-  useEffect(() => {
+const CustomCheckbox = ({ checked }) => {
+  const checkAnim = useSharedValue(checked ? 1 : 0);
+
+  React.useEffect(() => {
+    checkAnim.value = withTiming(checked ? 1 : 0, { duration: 300, easing: Easing.out(Easing.exp) });
+  }, [checked]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: interpolateColor(
+        checkAnim.value,
+        [0, 1],
+        ['#FFFFFF', '#FFDAB9']
+      ),
+      borderColor: interpolateColor(
+        checkAnim.value,
+        [0, 1],
+        ['#EAEAEA', '#FFDAB9']
+      ),
+    };
+  });
+
+  const checkMarkStyle = useAnimatedStyle(() => {
+    return {
+      opacity: checkAnim.value,
+      transform: [{ scale: checkAnim.value }]
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.checkboxContainer, animatedStyle]}>
+      <Animated.View style={[styles.checkMark, checkMarkStyle]} />
+    </Animated.View>
+  );
+};
+
+const BreathingContainer = React.memo(({ intention, onToggle }) => {
+  const scale = useSharedValue(1);
+  const breath = useSharedValue(1);
+
+  React.useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      breath.value = withRepeat(
+        withSequence(
+          withTiming(1.03, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      breath.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [intention.priority, intention.completed]);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+        { scale: breath.value }
+      ],
+      opacity: withTiming(intention.completed ? 0.6 : 1, { duration: 300 }),
+    };
+  });
 
   const getContainerStyle = () => {
     if (intention.completed) return styles.containerCompleted;
@@ -39,36 +100,41 @@ const BreathingContainer = ({ intention, onToggle }) => {
     return styles.containerNormal;
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
-
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+    <AnimatedPressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={() => onToggle(intention.id)}
+      style={[styles.intentionContainer, getContainerStyle(), animatedContainerStyle]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+    >
+      <View style={styles.intentionContent}>
+        <CustomCheckbox checked={intention.completed} />
+        <Text style={[
+          styles.intentionText,
+          {
+            color: intention.completed ? '#A0A0A0' : '#333333',
+            textDecorationLine: intention.completed ? 'line-through' : 'none'
+          }
+        ]}>
           {intention.title}
         </Text>
-      </TouchableOpacity>
-    </Animated.View>
+      </View>
+    </AnimatedPressable>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -97,7 +163,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -126,39 +192,57 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   intentionContainer: {
-    paddingVertical: 24,
+    paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
+    shadowColor: '#FFC0CB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
     elevation: 2,
-    alignItems: 'center',
     justifyContent: 'center',
+  },
+  intentionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   containerNormal: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#F9F9F9',
   },
   containerHighPriority: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
+    borderColor: '#FFF0F5',
+    shadowColor: '#FFC0CB',
     shadowOpacity: 0.1,
-    shadowRadius: 15,
+    shadowRadius: 20,
   },
   containerCompleted: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#Fdfdfd',
     borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+    borderColor: '#F0F0F0',
+    shadowOpacity: 0,
   },
   intentionText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '400',
     letterSpacing: 0.5,
   },
+  checkboxContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
+  }
 });
