@@ -1,6 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSpring, interpolateColor, useDerivedValue } from 'react-native-reanimated';
+import { CheckCircle2, Circle } from 'lucide-react-native';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -10,51 +12,76 @@ const INITIAL_INTENTIONS = [
 ];
 
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useSharedValue(1);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      scaleAnim.value = withRepeat(
+        withTiming(1.05, { duration: 2000 }),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      scaleAnim.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [intention.priority, intention.completed, scaleAnim]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
-  };
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scaleAnim.value }],
+    };
+  });
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
+  const completionProgress = useSharedValue(intention.completed ? 1 : 0);
+
+  React.useEffect(() => {
+    completionProgress.value = withTiming(intention.completed ? 1 : 0, { duration: 300 });
+  }, [intention.completed, completionProgress]);
+
+  const containerAnimatedStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      [intention.priority === 'high' ? '#FFFFFF' : '#FFFFFF', '#FAFAFA']
+    );
+    const borderColor = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      [intention.priority === 'high' ? '#FFDAB9' : '#F0F0F0', '#EAEAEA']
+    );
+    return { backgroundColor, borderColor };
+  });
+
+  const textAnimatedStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      ['#2F4F4F', '#A0A0A0']
+    );
+    return { color };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <Animated.View style={[animatedStyle]}>
+      <Pressable
         onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        style={({ pressed }) => [
+            { transform: [{ scale: pressed ? 0.98 : 1 }] }
+        ]}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
+        <Animated.View style={[styles.intentionContainer, containerAnimatedStyle, intention.priority === 'high' && !intention.completed ? styles.containerHighPriority : null]}>
+          <View style={styles.contentRow}>
+             {intention.completed ? (
+               <CheckCircle2 color="#FFC0CB" size={24} strokeWidth={2} />
+             ) : (
+               <Circle color="#D3D3D3" size={24} strokeWidth={2} />
+             )}
+            <Animated.Text style={[styles.intentionText, textAnimatedStyle, { textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+              {intention.title}
+            </Animated.Text>
+          </View>
+        </Animated.View>
+      </Pressable>
     </Animated.View>
   );
 };
@@ -97,7 +124,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FFFFFF',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -110,55 +137,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
+    fontSize: 32,
+    fontWeight: '400',
+    color: '#2F4F4F',
+    letterSpacing: 1.5,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#888888',
+    fontSize: 16,
+    fontWeight: '300',
+    color: '#808080',
     letterSpacing: 0.5,
   },
   listContainer: {
-    gap: 20,
+    gap: 16,
   },
   intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+    shadowColor: '#FFDAB9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
   },
   intentionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontSize: 18,
+    fontWeight: '400',
+    letterSpacing: 0.2,
   },
 });
