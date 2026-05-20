@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  interpolateColor,
+  interpolate,
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,66 +18,105 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-  useEffect(() => {
+const IntentionCard = React.memo(({ intention, onToggle }) => {
+  const isPressed = useSharedValue(false);
+  const isCompleted = useSharedValue(intention.completed ? 1 : 0);
+  const pulse = useSharedValue(0);
+
+  React.useEffect(() => {
+    isCompleted.value = withTiming(intention.completed ? 1 : 0, { duration: 300 });
+  }, [intention.completed, isCompleted]);
+
+  React.useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulse.value = withRepeat(
+        withTiming(1, { duration: 2000 }),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulse.value = withTiming(0);
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [intention.priority, intention.completed, pulse]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
-  };
+  const animatedStyle = useAnimatedStyle(() => {
+    const scale = withSpring(isPressed.value ? 0.96 : 1, { damping: 15, stiffness: 200 });
+    const opacity = interpolate(isCompleted.value, [0, 1], [1, 0.6]);
+    const borderColor = interpolateColor(
+      isCompleted.value,
+      [0, 1],
+      ['#F0F0F0', '#EAEAEA']
+    );
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
+    let pulseScale = 1;
+    if (intention.priority === 'high' && !intention.completed) {
+      pulseScale = interpolate(pulse.value, [0, 1], [1, 1.02]);
+    }
+
+    return {
+      transform: [{ scale: scale * pulseScale }],
+      opacity,
+      borderColor,
+    };
+  });
+
+  const textStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      isCompleted.value,
+      [0, 1],
+      ['#333333', '#A0A0A0']
+    );
+    return { color };
+  });
+
+  const checkboxStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      isCompleted.value,
+      [0, 1],
+      ['transparent', '#FFC0CB']
+    );
+    const borderColor = interpolateColor(
+      isCompleted.value,
+      [0, 1],
+      ['#FFDAB9', '#FFC0CB']
+    );
+    return { backgroundColor, borderColor };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+    <AnimatedPressable
+      style={[styles.intentionCard, animatedStyle]}
+      onPressIn={() => (isPressed.value = true)}
+      onPressOut={() => (isPressed.value = false)}
+      onPress={() => onToggle(intention.id)}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+      accessibilityLabel={intention.title}
+    >
+      <View style={styles.cardContent}>
+        <Animated.View style={[styles.checkbox, checkboxStyle]}>
+          {intention.completed && <Text style={styles.checkmark}>✓</Text>}
+        </Animated.View>
+        <Animated.Text style={[styles.intentionText, textStyle, intention.completed && styles.strikethrough]}>
           {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        </Animated.Text>
+      </View>
+    </AnimatedPressable>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -81,14 +129,13 @@ export default function App() {
 
         <View style={styles.listContainer}>
           {intentions.map(intention => (
-            <BreathingContainer
+            <IntentionCard
               key={intention.id}
               intention={intention}
               onToggle={toggleIntention}
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,68 +144,71 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 40,
-    alignItems: 'center',
+    marginBottom: 48,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
+    fontSize: 34,
+    fontWeight: '600',
+    color: '#2F4F4F',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '400',
     color: '#888888',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   listContainer: {
-    gap: 20,
+    gap: 16,
   },
-  intentionContainer: {
-    paddingVertical: 24,
+  intentionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    paddingVertical: 20,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 24,
+    shadowColor: '#FFDAB9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 3,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    marginRight: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   intentionText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  strikethrough: {
+    textDecorationLine: 'line-through',
   },
 });
