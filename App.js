@@ -1,6 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withSpring
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,29 +17,33 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const BreathingContainer = React.memo(({ intention, onToggle }) => {
+  const pulseAnim = useSharedValue(1);
+  const scale = useSharedValue(1);
 
+  // Performance optimization: Using reanimated instead of Animated.loop
   useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulseAnim.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 2000 }),
+          withTiming(1, { duration: 2000 })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulseAnim.value = withTiming(1, { duration: 500 });
     }
   }, [intention.priority, intention.completed, pulseAnim]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: pulseAnim.value * scale.value }
+      ]
+    };
+  });
 
   const getContainerStyle = () => {
     if (intention.completed) return styles.containerCompleted;
@@ -45,30 +57,41 @@ const BreathingContainer = ({ intention, onToggle }) => {
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <Animated.View style={[styles.intentionContainer, getContainerStyle(), animatedStyle]}>
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: intention.completed }}
+        accessibilityLabel={intention.title}
+        accessibilityHint={intention.completed ? "Marks intention as incomplete" : "Marks intention as completed"}
+        onPressIn={() => { scale.value = withSpring(0.95); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
         onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        style={styles.pressableArea}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.contentRow}>
+          <View style={[styles.customCheckbox, intention.completed && styles.customCheckboxChecked]}>
+            {intention.completed && <View style={styles.customCheckboxInner} />}
+          </View>
+          <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+            {intention.title}
+          </Text>
+        </View>
+      </Pressable>
     </Animated.View>
   );
-};
+});
 
 export default function App() {
   const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
 
-  const toggleIntention = (id) => {
+  // Performance optimization: useCallback with functional state update
+  const toggleIntention = useCallback((id) => {
     setIntentions(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -88,7 +111,6 @@ export default function App() {
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +119,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -112,7 +134,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: '#4A4A4A',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -126,16 +148,42 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 2,
+    overflow: 'hidden',
+  },
+  pressableArea: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  contentRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFDAB9',
+    marginRight: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  customCheckboxChecked: {
+    borderColor: '#FFC0CB',
+  },
+  customCheckboxInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFC0CB',
   },
   containerNormal: {
     backgroundColor: '#FFFFFF',
@@ -145,9 +193,9 @@ const styles = StyleSheet.create({
   containerHighPriority: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
+    borderColor: '#FFDAB9',
+    shadowColor: '#FFDAB9',
+    shadowOpacity: 0.2,
     shadowRadius: 15,
   },
   containerCompleted: {
@@ -160,5 +208,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
+    flex: 1,
   },
 });
