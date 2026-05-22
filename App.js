@@ -1,95 +1,115 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  FlatList,
+  Pressable,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
+const DATA = [
+  { id: '1', title: 'Drink a glass of water', description: 'Hydrate before coffee' },
+  { id: '2', title: '10 min Meditation', description: 'Clear your mind' },
+  { id: '3', title: 'Journaling', description: 'Write your morning pages' },
+  { id: '4', title: 'Stretch', description: 'Wake up your body' },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+const HabitItem = React.memo(({ item, isChecked, onToggle }) => {
+  const scale = useSharedValue(1);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor: withTiming(isChecked ? '#FFDAB9' : '#FFFFFF', { duration: 300 }),
+      borderColor: withTiming(isChecked ? '#FFDAB9' : '#EFEFEF', { duration: 300 }),
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95);
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
+
+  const handlePress = () => {
+    onToggle(item.id);
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
+    <AnimatedPressable
+      style={[styles.itemContainer, animatedStyle]}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isChecked }}
+      accessibilityLabel={`Toggle habit ${item.title}`}
+      accessibilityHint={`Marks ${item.title} as ${isChecked ? 'incomplete' : 'complete'}`}
+    >
+      <View style={styles.itemContent}>
+        <Text style={[styles.itemTitle, isChecked && styles.itemTitleChecked]}>
+          {item.title}
         </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        <Text style={styles.itemDescription}>{item.description}</Text>
+      </View>
+      <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
+        {isChecked && <Text style={styles.checkmark}>✓</Text>}
+      </View>
+    </AnimatedPressable>
   );
-};
+});
 
 export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
+  const [completedItems, setCompletedItems] = useState({});
 
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
-  };
+  // Optimization: Functional state update allows empty dependency array []
+  const handleToggle = useCallback((id) => {
+    setCompletedItems((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }, []);
+
+  const completedCount = Object.values(completedItems).filter(Boolean).length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+          <Text style={styles.greeting}>Good morning, Jane</Text>
+          <Text style={styles.subtitle}>Let's start your day with intention.</Text>
+
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>
+              {completedCount} of {DATA.length} habits completed
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
+        <FlatList
+          data={DATA}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <HabitItem
+              item={item}
+              isChecked={!!completedItems[item.id]}
+              onToggle={handleToggle}
             />
-          ))}
-        </View>
-
-      </ScrollView>
+          )}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -97,68 +117,95 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
-  scrollContainer: {
-    flexGrow: 1,
+  container: {
+    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
   },
   header: {
-    marginBottom: 40,
-    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 24,
   },
-  title: {
+  greeting: {
     fontSize: 28,
-    fontWeight: '300',
-    color: '#333333',
-    letterSpacing: 2,
+    fontWeight: '600',
+    color: '#2F4F4F',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#888888',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '300',
+    color: '#2F4F4F',
+    opacity: 0.8,
+    marginBottom: 24,
   },
-  listContainer: {
-    gap: 20,
-  },
-  intentionContainer: {
-    paddingVertical: 24,
+  progressContainer: {
+    backgroundColor: '#FFC0CB',
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    alignSelf: 'flex-start',
+  },
+  progressText: {
+    color: '#2F4F4F',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  itemContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    padding: 20,
+    marginBottom: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderColor: '#EFEFEF',
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  itemContent: {
+    flex: 1,
+    paddingRight: 16,
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
+  itemTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2F4F4F',
+    marginBottom: 4,
+  },
+  itemTitleChecked: {
+    textDecorationLine: 'line-through',
     opacity: 0.6,
   },
-  intentionText: {
+  itemDescription: {
+    fontSize: 14,
+    color: '#2F4F4F',
+    opacity: 0.7,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFC0CB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: '#FFC0CB',
+    borderColor: '#FFC0CB',
+  },
+  checkmark: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontWeight: 'bold',
   },
 });
