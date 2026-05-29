@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  Easing,
+  interpolateColor,
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,53 +18,96 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const CustomCheckbox = ({ checked }) => {
+  const checkAnim = useSharedValue(checked ? 1 : 0);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    checkAnim.value = withTiming(checked ? 1 : 0, { duration: 300 });
+  }, [checked, checkAnim]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: interpolateColor(
+        checkAnim.value,
+        [0, 1],
+        ['transparent', '#FFC0CB'] // Blush pink
+      ),
+      borderColor: interpolateColor(
+        checkAnim.value,
+        [0, 1],
+        ['#EAEAEA', '#FFC0CB']
+      ),
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.checkboxContainer, animatedStyle]}>
+      {checked && <Text style={styles.checkmark}>✓</Text>}
+    </Animated.View>
+  );
+};
+
+const BreathingContainer = ({ intention, onToggle }) => {
+  const pulseAnim = useSharedValue(1);
+  const scaleAnim = useSharedValue(1);
+
+  React.useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulseAnim.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulseAnim.value = withTiming(1, { duration: 500 });
     }
   }, [intention.priority, intention.completed, pulseAnim]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: pulseAnim.value * scaleAnim.value }],
+      backgroundColor: intention.completed ? '#F7F7F7' : '#FFFFFF',
+      borderColor: intention.completed ? '#EAEAEA' : (intention.priority === 'high' ? '#E8F4F8' : '#F0F0F0'),
+      opacity: withTiming(intention.completed ? 0.6 : 1, { duration: 300 }),
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => {
+    return {
+      color: intention.completed ? '#A0A0A0' : '#4A4A4A',
+      textDecorationLine: intention.completed ? 'line-through' : 'none',
+    };
+  });
+
+  const onPressIn = () => {
+    scaleAnim.value = withTiming(0.96, { duration: 150 });
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const onPressOut = () => {
+    scaleAnim.value = withTiming(1, { duration: 150 });
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={() => onToggle(intention.id)}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+      accessibilityLabel={`Intention: ${intention.title}`}
+      accessibilityHint={intention.completed ? "Mark intention as incomplete" : "Mark intention as complete"}
+    >
+      <Animated.View style={[styles.intentionContainer, animatedContainerStyle]}>
+        <CustomCheckbox checked={intention.completed} />
+        <Animated.Text style={[styles.intentionText, animatedTextStyle]}>
           {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        </Animated.Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
@@ -88,7 +140,6 @@ export default function App() {
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -123,42 +174,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   listContainer: {
-    gap: 20,
+    gap: 16,
   },
   intentionContainer: {
-    paddingVertical: 24,
+    flexDirection: 'row',
+    paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.02,
     shadowRadius: 10,
-    elevation: 2,
+    elevation: 1,
+  },
+  checkboxContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12, // completely round for clean girl aesthetic
+    borderWidth: 1.5,
+    marginRight: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   intentionText: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontWeight: '400',
+    letterSpacing: 0.3,
   },
 });
