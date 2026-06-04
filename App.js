@@ -1,6 +1,6 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, Pressable, ScrollView } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolateColor } from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,53 +9,95 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+const IntentionCard = ({ intention, onToggle }) => {
+  const scale = useSharedValue(1);
+  const completedProgress = useSharedValue(intention.completed ? 1 : 0);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const onPressIn = () => {
+    scale.value = withSpring(0.95);
   };
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+  const onPressOut = () => {
+    scale.value = withSpring(1);
   };
+
+  const onPress = () => {
+    const newValue = !intention.completed;
+    completedProgress.value = withTiming(newValue ? 1 : 0, { duration: 300 });
+    onToggle(intention.id);
+  };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      ['#FFFFFF', '#FAFAFA']
+    );
+    const borderColor = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      [intention.priority === 'high' ? '#FFDAB9' : '#F0F0F0', '#EAEAEA']
+    );
+
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor,
+      borderColor,
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      ['#2F4F4F', '#A9A9A9']
+    );
+    return {
+      color,
+    };
+  });
+
+  const checkboxStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      ['transparent', '#FFC0CB']
+    );
+    const borderColor = interpolateColor(
+      completedProgress.value,
+      [0, 1],
+      ['#D3D3D3', '#FFC0CB']
+    );
+    return {
+      backgroundColor,
+      borderColor,
+    };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+    <AnimatedPressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      style={[styles.intentionContainer, animatedStyle]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: intention.completed }}
+    >
+      <View style={styles.cardContent}>
+        <Animated.View style={[styles.customCheckbox, checkboxStyle]} />
+        <Animated.Text
+          style={[
+            styles.intentionText,
+            animatedTextStyle,
+            intention.completed && styles.textCompleted
+          ]}
+        >
           {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        </Animated.Text>
+      </View>
+    </AnimatedPressable>
   );
 };
 
@@ -72,7 +114,6 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Aura Flow</Text>
@@ -81,14 +122,13 @@ export default function App() {
 
         <View style={styles.listContainer}>
           {intentions.map(intention => (
-            <BreathingContainer
+            <IntentionCard
               key={intention.id}
               intention={intention}
               onToggle={toggleIntention}
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +137,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -112,14 +152,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: '#2F4F4F',
     letterSpacing: 2,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#888888',
+    color: '#A9A9A9',
     letterSpacing: 0.5,
   },
   listContainer: {
@@ -128,37 +168,32 @@ const styles = StyleSheet.create({
   intentionContainer: {
     paddingVertical: 24,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 2,
+    borderWidth: 1,
+  },
+  cardContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
   },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-  },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
   },
   intentionText: {
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
+    flex: 1,
+  },
+  textCompleted: {
+    textDecorationLine: 'line-through',
   },
 });
