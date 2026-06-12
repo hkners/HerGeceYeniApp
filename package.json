@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.6",
+    "@google/generative-ai": "^0.24.1",
     "expo": "~55.0.4",
     "expo-status-bar": "~55.0.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
-    "react-native-web": "^0.21.0"
+    "react-native-reanimated": "^4.4.1",
+    "react-native-web": "^0.21.0",
+    "react-native-worklets": "^0.9.2"
   },
   "private": true
 }
