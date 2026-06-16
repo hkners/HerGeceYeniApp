@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+  interpolateColor
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,53 +18,77 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const IntentionCard = ({ intention, onToggle }) => {
+  const scale = useSharedValue(1);
+  const completionProgress = useSharedValue(intention.completed ? 1 : 0);
+  const pulse = useSharedValue(1);
 
   useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1500 }),
+          withTiming(1, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulse.value = withTiming(1);
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [intention.priority, intention.completed, pulse]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
-  };
+  useEffect(() => {
+    completionProgress.value = withTiming(intention.completed ? 1 : 0, { duration: 300 });
+  }, [intention.completed, completionProgress]);
 
-  const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
-  };
+  const animatedStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      ['#FFFFFF', '#FAFAFA']
+    );
+
+    const borderColor = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      [intention.priority === 'high' ? '#FFDAB9' : '#F0F0F0', '#EAEAEA']
+    );
+
+    return {
+      transform: [
+        { scale: scale.value },
+        { scale: pulse.value }
+      ],
+      backgroundColor,
+      borderColor,
+    };
+  });
+
+  const textAnimatedStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      completionProgress.value,
+      [0, 1],
+      ['#333333', '#A0A0A0']
+    );
+    return { color };
+  });
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
-      >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.97); }}
+      onPressOut={() => { scale.value = withSpring(1); }}
+      onPress={() => onToggle(intention.id)}
+    >
+      <Animated.View style={[styles.card, animatedStyle]}>
+        <Animated.Text style={[styles.cardText, textAnimatedStyle, intention.completed && styles.textCompleted]}>
           {intention.title}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+        </Animated.Text>
+        <View style={[styles.radioContainer, intention.completed && styles.radioContainerCompleted]}>
+          {intention.completed && <View style={styles.radioFilled} />}
+        </View>
+      </Animated.View>
+    </Pressable>
   );
 };
 
@@ -75,20 +108,19 @@ export default function App() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
+          <Text style={styles.title}>Lumina</Text>
           <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
         </View>
 
         <View style={styles.listContainer}>
           {intentions.map(intention => (
-            <BreathingContainer
+            <IntentionCard
               key={intention.id}
               intention={intention}
               onToggle={toggleIntention}
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,12 +129,12 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   header: {
@@ -110,55 +142,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '300',
     color: '#333333',
     letterSpacing: 2,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '400',
     color: '#888888',
     letterSpacing: 0.5,
   },
   listContainer: {
-    gap: 20,
+    gap: 16,
   },
-  intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+  card: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
+    shadowColor: '#FFDAB9',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
+    elevation: 2,
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
-  },
-  intentionText: {
+  cardText: {
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
+  },
+  textCompleted: {
+    textDecorationLine: 'line-through',
+  },
+  radioContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  radioContainerCompleted: {
+    borderColor: '#FFC0CB',
+  },
+  radioFilled: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFC0CB',
   },
 });
