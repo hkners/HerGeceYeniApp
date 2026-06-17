@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -10,28 +19,32 @@ const INITIAL_INTENTIONS = [
 ];
 
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+  const pulseScale = useSharedValue(1);
 
   useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulseScale.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [intention.priority, intention.completed, pulseScale]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+        { scale: pulseScale.value }
+      ]
+    };
+  });
 
   const getContainerStyle = () => {
     if (intention.completed) return styles.containerCompleted;
@@ -45,16 +58,24 @@ const BreathingContainer = ({ intention, onToggle }) => {
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.96); }}
+        onPressOut={() => { scale.value = withSpring(1); }}
         onPress={() => onToggle(intention.id)}
         style={[styles.intentionContainer, getContainerStyle()]}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.contentRow}>
+          <View style={styles.customCheckboxContainer}>
+            <View style={[styles.customCheckbox, intention.completed && styles.customCheckboxChecked]}>
+              {intention.completed && <View style={styles.checkmark} />}
+            </View>
+          </View>
+          <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
+            {intention.title}
+          </Text>
+        </View>
+      </Pressable>
     </Animated.View>
   );
 };
@@ -97,7 +118,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -112,7 +133,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: '#4A4A4A',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -126,7 +147,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   intentionContainer: {
-    paddingVertical: 24,
+    paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 20,
     shadowColor: '#000',
@@ -134,8 +155,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 2,
+    justifyContent: 'center',
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customCheckboxContainer: {
+    marginRight: 16,
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FFDAB9',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  customCheckboxChecked: {
+    backgroundColor: '#FFDAB9',
+  },
+  checkmark: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
   },
   containerNormal: {
     backgroundColor: '#FFFFFF',
@@ -145,8 +191,8 @@ const styles = StyleSheet.create({
   containerHighPriority: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
+    borderColor: '#FFC0CB',
+    shadowColor: '#FFC0CB',
     shadowOpacity: 0.1,
     shadowRadius: 15,
   },
