@@ -1,6 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -10,28 +18,31 @@ const INITIAL_INTENTIONS = [
 ];
 
 const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useSharedValue(1);
+  const pressAnim = useSharedValue(1);
 
   useEffect(() => {
     if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      pulseAnim.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 2000 }),
+          withTiming(1, { duration: 2000 })
+        ),
+        -1,
+        false
+      );
     } else {
-      pulseAnim.setValue(1);
+      pulseAnim.value = withTiming(1, { duration: 500 });
     }
   }, [intention.priority, intention.completed, pulseAnim]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: pulseAnim.value * pressAnim.value }
+      ],
+    };
+  });
 
   const getContainerStyle = () => {
     if (intention.completed) return styles.containerCompleted;
@@ -41,20 +52,21 @@ const BreathingContainer = ({ intention, onToggle }) => {
 
   const getTextColor = () => {
     if (intention.completed) return '#A0A0A0';
-    return '#4A4A4A';
+    return '#4A4A4A'; // Dark slate gray
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPressIn={() => { pressAnim.value = withSpring(0.95); }}
+        onPressOut={() => { pressAnim.value = withSpring(1); }}
         onPress={() => onToggle(intention.id)}
         style={[styles.intentionContainer, getContainerStyle()]}
       >
         <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
           {intention.title}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 };
@@ -88,7 +100,6 @@ export default function App() {
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +108,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA', // Ultra-light off-white background
   },
   scrollContainer: {
     flexGrow: 1,
@@ -112,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '300',
-    color: '#333333',
+    color: '#4A4A4A', // Dark slate gray
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -128,32 +139,33 @@ const styles = StyleSheet.create({
   intentionContainer: {
     paddingVertical: 24,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
+    borderRadius: 24, // Soft rounded corners
+    shadowColor: '#FFC0CB', // Blush pink shadow base
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 15,
     elevation: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
   containerNormal: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#FFF0F5', // Very light pinkish border
   },
   containerHighPriority: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+    borderColor: '#FFDAB9', // Soft peach highlight
+    shadowColor: '#FFDAB9',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
   },
   containerCompleted: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FAFAFA',
     borderWidth: 1,
-    borderColor: '#EAEAEA',
+    borderColor: '#F0F0F0',
+    shadowOpacity: 0,
+    elevation: 0,
     opacity: 0.6,
   },
   intentionText: {
