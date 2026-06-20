@@ -1,6 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+} from 'react-native-reanimated';
 
 const INITIAL_INTENTIONS = [
   { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
@@ -9,52 +17,88 @@ const INITIAL_INTENTIONS = [
   { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const CustomCheckbox = ({ checked }) => {
+  const checkScale = useSharedValue(checked ? 1 : 0);
 
   useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+    checkScale.value = withSpring(checked ? 1 : 0);
+  }, [checked]);
+
+  const animatedCheckStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: checkScale.value }],
+      opacity: checkScale.value,
+    };
+  });
+
+  return (
+    <View style={[styles.checkboxContainer, checked && styles.checkboxContainerChecked]}>
+      <Animated.View style={[styles.checkboxInner, animatedCheckStyle]} />
+    </View>
+  );
+};
+
+const BreathingContainer = ({ intention, onToggle }) => {
+  const isCompleted = intention.completed;
+  const isHighPriority = intention.priority === 'high' && !isCompleted;
+
+  const scale = useSharedValue(1);
+  const pressScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isHighPriority) {
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.03, { duration: 2000 }),
+          withTiming(1, { duration: 2000 })
+        ),
+        -1,
+        true
+      );
     } else {
-      pulseAnim.setValue(1);
+      scale.value = withTiming(1, { duration: 500 });
     }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  }, [isHighPriority]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value * pressScale.value }
+      ],
+      opacity: withTiming(isCompleted ? 0.6 : 1, { duration: 300 }),
+    };
+  });
 
   const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
+    if (isCompleted) return styles.containerCompleted;
+    if (isHighPriority) return styles.containerHighPriority;
     return styles.containerNormal;
   };
 
   const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
+    if (isCompleted) return '#A0A0A0';
     return '#4A4A4A';
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={0.8}
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPressIn={() => {
+          pressScale.value = withSpring(0.97);
+        }}
+        onPressOut={() => {
+          pressScale.value = withSpring(1);
+        }}
         onPress={() => onToggle(intention.id)}
         style={[styles.intentionContainer, getContainerStyle()]}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.contentRow}>
+          <CustomCheckbox checked={isCompleted} />
+          <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: isCompleted ? 'line-through' : 'none' }]}>
+            {intention.title}
+          </Text>
+        </View>
+      </Pressable>
     </Animated.View>
   );
 };
@@ -88,7 +132,6 @@ export default function App() {
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +140,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -128,14 +171,19 @@ const styles = StyleSheet.create({
   intentionContainer: {
     paddingVertical: 24,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 2,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   containerNormal: {
     backgroundColor: '#FFFFFF',
@@ -145,20 +193,39 @@ const styles = StyleSheet.create({
   containerHighPriority: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
+    borderColor: '#FFDAB9',
+    shadowColor: '#FFDAB9',
+    shadowOpacity: 0.2,
     shadowRadius: 15,
   },
   containerCompleted: {
     backgroundColor: '#F7F7F7',
     borderWidth: 1,
     borderColor: '#EAEAEA',
-    opacity: 0.6,
   },
   intentionText: {
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
+  },
+  checkboxContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FFC0CB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxContainerChecked: {
+    borderColor: '#FFDAB9',
+    backgroundColor: '#FFDAB9',
+  },
+  checkboxInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
   },
 });
