@@ -1,0 +1,22 @@
+
+> hergeceyeniapp@1.0.0 web
+> expo start --web
+
+Starting project at /app
+Starting Metro Bundler
+
+The following packages should be updated for best compatibility with the installed expo version:
+  @expo/metro-runtime@55.0.6 - expected version: ~55.0.11
+  babel-preset-expo@56.0.15 - expected version: ~55.0.8
+  expo@55.0.4 - expected version: ~55.0.26
+  expo-status-bar@55.0.4 - expected version: ~55.0.6
+  react-native@0.83.2 - expected version: 0.83.6
+  react-native-reanimated@3.19.5 - expected version: 4.2.1
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.2% (111/183)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 70.7% (296/363)
+Web Bundled 9194ms index.js (437 modules)
+ LOG  [web] Logs will appear in the browser console
