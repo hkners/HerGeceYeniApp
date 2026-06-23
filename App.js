@@ -1,69 +1,98 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Animated, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring
+} from 'react-native-reanimated';
 
-const INITIAL_INTENTIONS = [
-  { id: '1', title: 'Morning Meditation', priority: 'high', completed: false },
-  { id: '2', title: 'Review Weekly Goals', priority: 'medium', completed: false },
-  { id: '3', title: 'Hydrate & Stretch', priority: 'low', completed: false },
-  { id: '4', title: 'Deep Work Session', priority: 'high', completed: false },
+const INITIAL_RITUALS = [
+  { id: '1', title: 'Morning Matcha', time: '08:00 AM', completed: false },
+  { id: '2', title: '5-Minute Journal', time: '08:30 AM', completed: false },
+  { id: '3', title: 'Gua Sha Facial Massage', time: '09:00 AM', completed: false },
+  { id: '4', title: 'Hydration (1L)', time: '12:00 PM', completed: false },
+  { id: '5', title: 'Evening Wind Down', time: '09:00 PM', completed: false },
 ];
 
-const BreathingContainer = ({ intention, onToggle }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+const CustomCheckbox = ({ checked }) => {
+  const scale = useSharedValue(checked ? 1 : 0);
+  const opacity = useSharedValue(checked ? 1 : 0);
 
-  useEffect(() => {
-    if (intention.priority === 'high' && !intention.completed) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [intention.priority, intention.completed, pulseAnim]);
+  React.useEffect(() => {
+    scale.value = withSpring(checked ? 1 : 0.5, { damping: 12 });
+    opacity.value = withTiming(checked ? 1 : 0, { duration: 200 });
+  }, [checked, scale, opacity]);
 
-  const getContainerStyle = () => {
-    if (intention.completed) return styles.containerCompleted;
-    if (intention.priority === 'high') return styles.containerHighPriority;
-    return styles.containerNormal;
+  const animatedCheckStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <View style={styles.checkboxOutline}>
+      <Animated.View style={[styles.checkboxFill, animatedCheckStyle]} />
+    </View>
+  );
+};
+
+const RitualCard = ({ ritual, onToggle }) => {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(ritual.completed ? 0.6 : 1);
+
+  React.useEffect(() => {
+    opacity.value = withTiming(ritual.completed ? 0.6 : 1, { duration: 300 });
+  }, [ritual.completed, opacity]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15 });
   };
 
   const getTextColor = () => {
-    if (intention.completed) return '#A0A0A0';
+    if (ritual.completed) return '#A0A0A0';
     return '#4A4A4A';
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+    <Animated.View style={[styles.ritualContainer, animatedContainerStyle]}>
       <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onToggle(intention.id)}
-        style={[styles.intentionContainer, getContainerStyle()]}
+        activeOpacity={1}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={() => onToggle(ritual.id)}
+        style={styles.ritualTouchable}
       >
-        <Text style={[styles.intentionText, { color: getTextColor(), textDecorationLine: intention.completed ? 'line-through' : 'none' }]}>
-          {intention.title}
-        </Text>
+        <View style={styles.ritualInfo}>
+          <Text style={[styles.ritualTitle, { color: getTextColor(), textDecorationLine: ritual.completed ? 'line-through' : 'none' }]}>
+            {ritual.title}
+          </Text>
+          <Text style={styles.ritualTime}>{ritual.time}</Text>
+        </View>
+        <CustomCheckbox checked={ritual.completed} />
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
 export default function App() {
-  const [intentions, setIntentions] = useState(INITIAL_INTENTIONS);
+  const [rituals, setRituals] = useState(INITIAL_RITUALS);
 
-  const toggleIntention = (id) => {
-    setIntentions(prev =>
+  const toggleRitual = (id) => {
+    setRituals(prev =>
       prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
@@ -75,20 +104,19 @@ export default function App() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Aura Flow</Text>
-          <Text style={styles.subtitle}>Breathe into your daily intentions.</Text>
+          <Text style={styles.title}>Lumina</Text>
+          <Text style={styles.subtitle}>Your daily wellness rituals.</Text>
         </View>
 
         <View style={styles.listContainer}>
-          {intentions.map(intention => (
-            <BreathingContainer
-              key={intention.id}
-              intention={intention}
-              onToggle={toggleIntention}
+          {rituals.map(ritual => (
+            <RitualCard
+              key={ritual.id}
+              ritual={ritual}
+              onToggle={toggleRitual}
             />
           ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +125,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light, clean background
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -123,42 +151,53 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   listContainer: {
-    gap: 20,
+    gap: 16,
   },
-  intentionContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+  ritualContainer: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03,
     shadowRadius: 10,
     elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  containerNormal: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#F0F0F0',
   },
-  containerHighPriority: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8F4F8', // Soft highlight (airy blue)
-    shadowColor: '#A0D8E6',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+  ritualTouchable: {
+    flexDirection: 'row',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  containerCompleted: {
-    backgroundColor: '#F7F7F7',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    opacity: 0.6,
+  ritualInfo: {
+    flex: 1,
   },
-  intentionText: {
+  ritualTitle: {
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  ritualTime: {
+    fontSize: 13,
+    color: '#A0A0A0',
+  },
+  checkboxOutline: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#FFDAB9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  checkboxFill: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFC0CB',
   },
 });
