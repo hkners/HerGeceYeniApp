@@ -1,0 +1,19 @@
+Starting project at /app
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+The following packages should be updated for best compatibility with the installed expo version:
+  @expo/metro-runtime@55.0.6 - expected version: ~55.0.11
+  babel-preset-expo@57.0.1 - expected version: ~55.0.8
+  expo@55.0.4 - expected version: ~55.0.27
+  expo-status-bar@55.0.4 - expected version: ~55.0.6
+  react-native@0.83.2 - expected version: 0.83.6
+  react-native-reanimated@3.16.1 - expected version: 4.2.1
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.6% (120/186)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.9% (292/357)
+Web Bundled 8792ms index.js (428 modules)
+ LOG  [web] Logs will appear in the browser console
